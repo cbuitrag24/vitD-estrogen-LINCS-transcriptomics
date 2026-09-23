@@ -1,0 +1,16 @@
+# Large public LINCS source data (download from GEO GSE92742)
+*.gctx
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv_nuevo/
+
+# Generated analysis outputs
+*.npz
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
