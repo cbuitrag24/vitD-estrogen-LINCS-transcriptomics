@@ -14,7 +14,7 @@ The corresponding GSE92742 signature, perturbagen and gene metadata files are al
 
 ## Script audit
 
-The working analysis contains 58 Python scripts numbered 01–58. All 58 passed a Python syntax parse check during repository preparation.
+The complete analysis pipeline contains 79 Python scripts numbered 01–79.
 
 Two working scripts contain a machine-specific absolute path to the Level 5 GCTX file:
 
@@ -29,4 +29,4 @@ The Hallmark analyses use `h.all.v2026.1.Hs.symbols.gmt` (MSigDB human release 2
 
 ## Provenance
 
-`data/curation/tabla_curacion_quimica.csv` is the original curation input supplied from the working analysis and is retained without retrospective correction.
+The files in `data/curation/` are original curation and signature-selection files from the working analysis. Their SHA256 hashes were verified against the corresponding original analysis files during repository preparation, confirming that the repository copies are unchanged.
