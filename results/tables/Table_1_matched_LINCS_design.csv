@@ -1,0 +1,13 @@
+﻿Cell line,Treatment,Dose (µM),Exposure time (h),Matched block,Constituent profiles (n)
+A549,Estradiol,10,24,A549__CPC011,3
+A549,Calcitriol,10,24,A549__CPC011,3
+A549,Calcipotriol,10,24,A549__CPC011,3
+HA1E,Estradiol,10,24,HA1E__CRCGN004,3
+HA1E,Calcitriol,10,24,HA1E__CRCGN004,9
+HA1E,Calcipotriol,10,24,HA1E__CRCGN004,9
+PC3,Estradiol,10,24,PC3__CPC011,4
+PC3,Calcitriol,10,24,PC3__CPC011,4
+PC3,Calcipotriol,10,24,PC3__CPC011,4
+VCAP,Estradiol,10,24,VCAP__CPC011,5
+VCAP,Calcitriol,10,24,VCAP__CPC011,5
+VCAP,Calcipotriol,10,24,VCAP__CPC011,5

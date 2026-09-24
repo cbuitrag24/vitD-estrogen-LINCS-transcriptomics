@@ -1,0 +1,8 @@
+﻿Cell_line,Experimental_block,N_6h_profiles,N_24h_profiles,Has_6h,Has_24h,Matched_6h_24h
+A549,CPC011,1,1,True,True,True
+A549,HOG002,1,1,True,True,True
+PC3,ASG001,1,1,True,True,True
+PC3,CPC003,1,1,True,True,True
+PC3,CPC011,1,1,True,True,True
+PC3,CPD002,1,1,True,True,True
+VCAP,CPC011,1,1,True,True,True

@@ -1,0 +1,10 @@
+﻿Gene,Receptor_axis,Present_in_L1000,Landmark_status,L1000_measurement_type
+CYP24A1,Vitamin D,True,No,Inferred
+CYP27B1,Vitamin D,True,No,Inferred
+RXRA,Vitamin D,True,No,Inferred
+RXRB,Vitamin D,True,No,Inferred
+RXRG,Vitamin D,True,No,Inferred
+VDR,Vitamin D,True,No,Inferred
+ESR1,Oestrogen,True,No,Inferred
+ESR2,Oestrogen,True,No,Inferred
+GPER1,Oestrogen,True,Yes,Landmark_direct

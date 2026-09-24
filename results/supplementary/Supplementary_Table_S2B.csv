@@ -1,0 +1,13 @@
+﻿Gene_space,Metric,Contrast,N_blocks,Mean_similarity_VitD_pair,Mean_similarity_comparator,Mean_paired_difference,Median_paired_difference,Blocks_VitD_pair_higher,Blocks_VitD_pair_lower,N_exact_sign_permutations,Exact_two_sided_P
+Full,Pearson,Calcitriol–calcipotriol vs estradiol–calcipotriol,4,0.3828597888350487,0.1306590547319501,0.2522007341030985,0.2354475017637014,3,1,16,0.25
+Full,Pearson,Calcitriol–calcipotriol vs estradiol–calcitriol,4,0.3828597888350487,0.1781587172299623,0.2047010716050863,0.226588275283575,2,2,16,0.5
+Full,Spearman,Calcitriol–calcipotriol vs estradiol–calcipotriol,4,0.3675708161689506,0.1220847433560863,0.2454860728128643,0.2026058892210793,3,1,16,0.25
+Full,Spearman,Calcitriol–calcipotriol vs estradiol–calcitriol,4,0.3675708161689506,0.1620562433565218,0.2055145728124287,0.2116496417001819,2,2,16,0.5
+Full,Cosine,Calcitriol–calcipotriol vs estradiol–calcipotriol,4,0.402209110558033,0.1389055007603019,0.263303609797731,0.2503569014370441,3,1,16,0.25
+Full,Cosine,Calcitriol–calcipotriol vs estradiol–calcitriol,4,0.402209110558033,0.1821449091657995,0.2200642013922333,0.247030632570386,2,2,16,0.5
+Landmark,Pearson,Calcitriol–calcipotriol vs estradiol–calcipotriol,4,0.4671696498990059,0.155689341481775,0.3114803084172308,0.3645998360589146,4,0,16,0.125
+Landmark,Pearson,Calcitriol–calcipotriol vs estradiol–calcitriol,4,0.4671696498990059,0.2106320541352033,0.2565375957638025,0.2679450958967209,3,1,16,0.25
+Landmark,Spearman,Calcitriol–calcipotriol vs estradiol–calcipotriol,4,0.455653155291328,0.1432212781952467,0.3124318770960813,0.332845845287409,4,0,16,0.125
+Landmark,Spearman,Calcitriol–calcipotriol vs estradiol–calcitriol,4,0.455653155291328,0.2017974703948483,0.2538556848964798,0.282065631689316,3,1,16,0.25
+Landmark,Cosine,Calcitriol–calcipotriol vs estradiol–calcipotriol,4,0.4693125486373901,0.1577031915076076,0.3116093571297825,0.362925005145371,4,0,16,0.125
+Landmark,Cosine,Calcitriol–calcipotriol vs estradiol–calcitriol,4,0.4693125486373901,0.2121323961764573,0.2571801524609327,0.2690407335758209,3,1,16,0.25

@@ -1,0 +1,13 @@
+﻿Gene space,Treatment pair,Direction,Observed overlap,Expected overlap,Fold enrichment,BH-adjusted P
+"Full (12,328 genes)",Calcitriol vs calcipotriol,Up,94,47.25,1.99,2.621417794774796e-10
+Landmark (978 genes),Calcitriol vs calcipotriol,Up,9,2.97,3.04,0.0042968861927912
+"Full (12,328 genes)",Calcitriol vs calcipotriol,Down,152,52.1,2.92,1.5584014096066516e-34
+Landmark (978 genes),Calcitriol vs calcipotriol,Down,26,10.68,2.43,1.0068475598053506e-05
+"Full (12,328 genes)",Estradiol vs calcitriol,Up,48,34.76,1.38,0.027914132308807
+Landmark (978 genes),Estradiol vs calcitriol,Up,3,3.07,0.98,0.7261692784765273
+"Full (12,328 genes)",Estradiol vs calcitriol,Down,47,23.35,2.01,1.0068475598053506e-05
+Landmark (978 genes),Estradiol vs calcitriol,Down,5,3.23,1.55,0.2870594723236563
+"Full (12,328 genes)",Estradiol vs calcipotriol,Up,79,67.43,1.17,0.1281561523203446
+Landmark (978 genes),Estradiol vs calcipotriol,Up,2,3.56,0.56,0.9079408945832066
+"Full (12,328 genes)",Estradiol vs calcipotriol,Down,35,29.25,1.2,0.2291147078483439
+Landmark (978 genes),Estradiol vs calcipotriol,Down,3,5.14,0.58,0.9079408945832066

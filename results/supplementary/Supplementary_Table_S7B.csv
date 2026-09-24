@@ -1,0 +1,14 @@
+﻿Gene,Mean_direction_across_treatments,Estradiol_mean_MODZ,Calcitriol_mean_MODZ,Calcipotriol_mean_MODZ,Estradiol_context_consistency,Calcitriol_context_consistency,Calcipotriol_context_consistency,Context_robust_all_3_treatments
+BIRC5,negativa_en_los_3,-0.992345817387104,-0.4965667948126793,-1.0536636263132095,predominio_negativo_3de4,predominio_negativo_3de4,predominio_negativo_3de4,True
+CCNA2,negativa_en_los_3,-1.2631785701960323,-0.6374457776546478,-0.8165179751813412,predominio_negativo_3de4,predominio_negativo_3de4,predominio_negativo_3de4,True
+CCNB2,negativa_en_los_3,-1.417558992281556,-0.7587502598762512,-1.1244172882288694,predominio_negativo_3de4,predominio_negativo_3de4,predominio_negativo_3de4,True
+CDC20,negativa_en_los_3,-0.8064996898174286,-0.6087565831840038,-0.7606834843754768,predominio_negativo_3de4,negativo_4de4,negativo_4de4,True
+CDC25A,negativa_en_los_3,-1.137280859053135,-1.4197611808776855,-0.6293168365955353,predominio_negativo_3de4,predominio_negativo_3de4,predominio_negativo_3de4,True
+EZH2,negativa_en_los_3,-0.8028034642338753,-0.8397131990641356,-0.8957453072071075,predominio_negativo_3de4,negativo_4de4,predominio_negativo_3de4,True
+KIF2C,negativa_en_los_3,-1.607963740825653,-0.6037519443780184,-0.8415684774518013,negativo_4de4,predominio_negativo_3de4,predominio_negativo_3de4,True
+MCM3,negativa_en_los_3,-0.886051595211029,-0.3538589552044868,-0.5427016913890839,predominio_negativo_3de4,predominio_negativo_3de4,predominio_negativo_3de4,True
+LBR,negativa_en_los_3,-0.8896010667085648,-0.5753532126545906,-0.9277383759617804,heterogeneo,predominio_negativo_3de4,negativo_4de4,False
+MYC,negativa_en_los_3,-1.6363259479403496,-0.8100376278162003,-0.6932363063097,heterogeneo,predominio_negativo_3de4,predominio_negativo_3de4,False
+NOLC1,negativa_en_los_3,-0.424527145922184,-0.6175553929060698,-0.8292849510908127,heterogeneo,predominio_negativo_3de4,predominio_negativo_3de4,False
+PCNA,negativa_en_los_3,-0.4671286195516586,-0.6812547668814659,-1.3409903347492218,heterogeneo,negativo_4de4,negativo_4de4,False
+USP1,negativa_en_los_3,-0.4119003340601921,-0.5364451166242361,-0.7944203466176987,heterogeneo,negativo_4de4,negativo_4de4,False
