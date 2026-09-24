@@ -11,16 +11,13 @@ print("=" * 95)
 # 1. Archivos
 # ------------------------------------------------------------
 
-archivo_pares = Path("E2_temporal_firmas_pareadas.csv")
+archivo_pares = Path("data/curation/E2_temporal_firmas_pareadas.csv")
 
 archivo_genes = Path(
     "data/GSE92742_Broad_LINCS_gene_info.txt.gz"
 )
 
-archivo_gctx = Path(
-    r"D:\PAPER CB Y API NUEVO AGOSTO 2026"
-    r"\GSE92742_Broad_LINCS_Level5_COMPZ.MODZ_n473647x12328.gctx"
-)
+archivo_gctx = Path("data/GSE92742_Broad_LINCS_Level5_COMPZ.MODZ_n473647x12328.gctx")
 
 for archivo in [archivo_pares, archivo_genes, archivo_gctx]:
     if not archivo.exists():

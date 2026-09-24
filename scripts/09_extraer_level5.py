@@ -8,13 +8,10 @@ from pathlib import Path
 # ============================================================
 
 # Archivo GCTX original
-GCTX = Path(
-    r"D:\PAPER CB Y API NUEVO AGOSTO 2026"
-    r"\GSE92742_Broad_LINCS_Level5_COMPZ.MODZ_n473647x12328.gctx"
-)
+GCTX = Path("data/GSE92742_Broad_LINCS_Level5_COMPZ.MODZ_n473647x12328.gctx")
 
 # Firmas seleccionadas previamente
-ARCHIVO_FIRMAS = Path("firmas_para_extraccion_level5.csv")
+ARCHIVO_FIRMAS = Path("data/curation/firmas_para_extraccion_level5.csv")
 
 # Información de genes
 ARCHIVO_GENES = Path(
