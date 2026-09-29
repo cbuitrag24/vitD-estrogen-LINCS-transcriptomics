@@ -27,12 +27,13 @@ The primary analysis uses matched 24-hour perturbational signatures for estradio
 The repository is organised as follows:
 
 - `scripts/` — complete Python analysis pipeline (79 scripts), from data exploration and curation through statistical analyses, pathway analyses, figure generation and supplementary material preparation.
-- `data/` — processed data files required for reproducibility that can be redistributed through the repository.
+- `data/` — curated input files, GSE92742 metadata and the Hallmark gene-set collection required for reproducibility; the large Level 5 GCTX source matrix is not included.
 - `docs/` — supporting documentation for the analysis and reproducibility workflow.
+- `results/` — final manuscript figures, main result tables, supplementary tables and the compiled supplementary material.
 - `requirements.txt` — Python package requirements for the analysis.
 - `.gitignore` — excludes large source datasets, local environments and other files that should not be version controlled.
 
-The original LINCS L1000 Level 5 GCTX data are not included because of their size and should be obtained directly from GEO accession GSE92742.
+The original LINCS L1000 Level 5 GCTX matrix is not included because of its size. For reproducible execution, `GSE92742_Broad_LINCS_Level5_COMPZ.MODZ_n473647x12328.gctx` should be obtained from GEO accession GSE92742 and placed in the `data/` directory.
 
 ## Citation
 
