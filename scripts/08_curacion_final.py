@@ -6,7 +6,7 @@ import pandas as pd
 # ============================================================
 
 firmas = pd.read_csv("firmas_seleccionadas_level5.csv")
-quimica = pd.read_csv("tabla_curacion_quimica.csv")
+quimica = pd.read_csv("data/curation/tabla_curacion_quimica.csv")
 
 # E2 canónico seleccionado previamente
 E2_PRIMARY = ["BRD-K18910433"]
