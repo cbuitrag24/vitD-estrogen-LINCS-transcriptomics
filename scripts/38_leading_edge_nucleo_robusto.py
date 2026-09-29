@@ -6,7 +6,7 @@ print("=" * 90)
 print("LEADING-EDGE GENES DEL NÚCLEO HALLMARK ROBUSTO")
 print("=" * 90)
 
-GMT_FILE = "h.all.v2026.1.Hs.symbols.gmt"
+GMT_FILE = "data/h.all.v2026.1.Hs.symbols.gmt"
 
 TRATAMIENTOS = {
     "estradiol": "RANKING_estradiol.csv",

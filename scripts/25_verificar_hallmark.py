@@ -1,6 +1,6 @@
 from pathlib import Path
 
-archivo = Path("h.all.v2026.1.Hs.symbols.gmt")
+archivo = Path("data/h.all.v2026.1.Hs.symbols.gmt")
 
 if not archivo.exists():
     print("ERROR: no se encontró el archivo Hallmark")

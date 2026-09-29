@@ -17,7 +17,7 @@ TRATAMIENTOS = [
     "calcipotriol"
 ]
 
-GMT_FILE = "h.all.v2026.1.Hs.symbols.gmt"
+GMT_FILE = "data/h.all.v2026.1.Hs.symbols.gmt"
 
 print("=" * 80)
 print("GSEA PRERANKED - HALLMARK")

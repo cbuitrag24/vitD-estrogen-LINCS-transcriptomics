@@ -20,7 +20,7 @@ print("\nGenes LINCS únicos:", len(genes_lincs))
 hallmarks = {}
 
 with open(
-    "h.all.v2026.1.Hs.symbols.gmt",
+"data/h.all.v2026.1.Hs.symbols.gmt",
     "r",
     encoding="utf-8"
 ) as f:

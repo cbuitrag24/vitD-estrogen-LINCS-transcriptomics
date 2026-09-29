@@ -20,20 +20,10 @@ for archivo in [archivo_npz, archivo_meta, archivo_genes]:
     if not archivo.exists():
         raise FileNotFoundError(f"No se encontró: {archivo}")
 
-# Buscar el GMT Hallmark ya utilizado previamente
-posibles_gmt = [
-    Path("h.all.v2026.1.Hs.symbols.gmt"),
-    Path("data/h.all.v2026.1.Hs.symbols.gmt"),
-]
+# Archivo GMT Hallmark
+archivo_gmt = Path("data/h.all.v2026.1.Hs.symbols.gmt")
 
-archivo_gmt = None
-
-for p in posibles_gmt:
-    if p.exists():
-        archivo_gmt = p
-        break
-
-if archivo_gmt is None:
+if not archivo_gmt.exists():
     raise FileNotFoundError(
         "No se encontró h.all.v2026.1.Hs.symbols.gmt"
     )

@@ -12,7 +12,7 @@ print("=" * 105)
 ARCHIVO_EXPR = "dataset_primario_expresion_12x12328.npz"
 ARCHIVO_GENES = "dataset_primario_genes.csv"
 ARCHIVO_META = "dataset_primario_metadata.csv"
-ARCHIVO_GMT = "h.all.v2026.1.Hs.symbols.gmt"
+ARCHIVO_GMT = "data/h.all.v2026.1.Hs.symbols.gmt"
 ARCHIVO_FULL = "HALLMARK_CONTEXTO_scores.csv"
 
 HALLMARKS_OBJETIVO = [
