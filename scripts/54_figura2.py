@@ -1,28 +1,41 @@
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
 from pathlib import Path
-
-print("=" * 90)
-print("FIGURA 2 — VARIACIÓN GLOBAL Y SIMILITUD ENTRE TRATAMIENTOS")
-print("=" * 90)
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 # ============================================================
-# PANEL A — PERMANOVA
+# FIGURE 2 — CORRECTED PUBLICATION LAYOUT
+# Exact size: 14.5 x 9 cm
+# PDF vector + PNG 600 dpi
 # ============================================================
+
+SOURCE = Path(
+    r"C:\Users\petri\LINCS_Estradiol_VitaminaD"
+)
+
+REPO = Path(
+    r"C:\Users\petri\vitD-estrogen-LINCS-transcriptomics"
+)
+
+OUTPUT = REPO / "results" / "figures"
+
+# ------------------------------------------------------------
+# 1. Original PERMANOVA results
+# ------------------------------------------------------------
 
 permanova = pd.DataFrame({
     "Gene space": [
-        "Full",
-        "Full",
-        "Landmark",
-        "Landmark"
+        "Full", "Full", "Landmark", "Landmark"
     ],
     "Source": [
-        "Treatment",
-        "Context / block",
-        "Treatment",
-        "Context / block"
+        "Treatment", "Context / block",
+        "Treatment", "Context / block"
     ],
     "R2": [
         0.1380151871065361,
@@ -32,304 +45,238 @@ permanova = pd.DataFrame({
     ]
 })
 
-print("\nPERMANOVA:")
-print(permanova.to_string(index=False))
+p_values = [0.5740740740740741, 0.2916666666666667]
 
-# p exactos del efecto de tratamiento
-p_full = 0.5740740740740741
-p_landmark = 0.2916666666666667
+# ------------------------------------------------------------
+# 2. Locate original Pearson similarity data
+# ------------------------------------------------------------
 
-# ============================================================
-# PANEL B — SIMILITUD POR CONTEXTO
-# ============================================================
+filename = "ESTADISTICA_similitud_por_contexto.csv"
 
-archivo_sim = Path("ESTADISTICA_similitud_por_contexto.csv")
+matches = []
+for folder in (SOURCE, REPO):
+    if folder.is_dir():
+        matches.extend(folder.rglob(filename))
 
-if not archivo_sim.exists():
+matches = list({
+    str(p.resolve()): p
+    for p in matches if p.is_file()
+}.values())
+
+if len(matches) != 1:
     raise FileNotFoundError(
-        "No se encontró ESTADISTICA_similitud_por_contexto.csv"
+        f"Expected one original similarity CSV; "
+        f"found {len(matches)}:\n" +
+        "\n".join(str(p) for p in matches)
     )
 
-sim = pd.read_csv(archivo_sim)
+sim = pd.read_csv(matches[0])
 
-print("\nArchivo de similitud encontrado.")
-print("Filas:", len(sim))
-print("Columnas:")
-print(list(sim.columns))
+required = [
+    "analysis", "metric", "cell_id",
+    "vitd_vitd", "e2_calcitriol", "e2_calcipotriol"
+]
 
-# ------------------------------------------------------------
-# Verificar estructura real del CSV
-# ------------------------------------------------------------
+missing = [c for c in required if c not in sim.columns]
+if missing:
+    raise ValueError(f"Missing columns: {missing}")
 
-columnas_necesarias = [
-    "analysis",
-    "metric",
-    "cell_id",
+sim = sim.loc[
+    sim["analysis"].astype(str).str.lower()
+    .str.contains("full", na=False)
+    &
+    sim["metric"].astype(str).str.lower()
+    .str.contains("pearson", na=False)
+].copy()
+
+comparison_codes = [
     "vitd_vitd",
     "e2_calcitriol",
     "e2_calcipotriol"
 ]
 
-faltantes = [
-    c for c in columnas_necesarias
-    if c not in sim.columns
-]
-
-if faltantes:
-    raise ValueError(
-        f"Faltan columnas necesarias en el CSV: {faltantes}"
-    )
-
-# ------------------------------------------------------------
-# Usar sólo Full + Pearson
-# ------------------------------------------------------------
-
-sim_filtrado = sim[
-    (
-        sim["analysis"]
-        .astype(str)
-        .str.lower()
-        .str.contains("full")
-    )
-    &
-    (
-        sim["metric"]
-        .astype(str)
-        .str.lower()
-        .str.contains("pearson")
-    )
-].copy()
-
-print("\nFilas Full + Pearson:", len(sim_filtrado))
-
-if len(sim_filtrado) == 0:
-    raise ValueError(
-        "No se encontraron filas correspondientes a Full + Pearson."
-    )
-
-# ------------------------------------------------------------
-# Convertir formato ancho a largo
-# ------------------------------------------------------------
-
-sim_plot = sim_filtrado.melt(
+sim_long = sim.melt(
     id_vars=["cell_id"],
-    value_vars=[
-        "vitd_vitd",
-        "e2_calcitriol",
-        "e2_calcipotriol"
-    ],
-    var_name="comparison_code",
+    value_vars=comparison_codes,
+    var_name="comparison",
     value_name="pearson"
 )
 
-mapa_comparaciones = {
-    "vitd_vitd":
-        "Calcitriol vs Calcipotriol",
+sim_long["cell_id"] = (
+    sim_long["cell_id"].astype(str).str.strip().str.upper()
+)
 
-    "e2_calcitriol":
-        "Estradiol vs Calcitriol",
+sim_long["pearson"] = pd.to_numeric(
+    sim_long["pearson"], errors="raise"
+)
 
-    "e2_calcipotriol":
-        "Estradiol vs Calcipotriol"
+cells = ["A549", "HA1E", "PC3", "VCAP"]
+
+expected = {
+    (cell, comparison)
+    for cell in cells
+    for comparison in comparison_codes
 }
 
-sim_plot["comparison_label"] = (
-    sim_plot["comparison_code"]
-    .map(mapa_comparaciones)
-)
+actual = list(zip(
+    sim_long["cell_id"], sim_long["comparison"]
+))
 
-orden_comparaciones = [
-    "Calcitriol vs Calcipotriol",
-    "Estradiol vs Calcitriol",
-    "Estradiol vs Calcipotriol"
-]
-
-print("\nDatos utilizados para Panel B:")
-print(
-    sim_plot[
-        [
-            "cell_id",
-            "comparison_label",
-            "pearson"
-        ]
-    ].to_string(
-        index=False
-    )
-)
-
-# Verificar que estén las tres comparaciones
-presentes = set(
-    sim_plot["comparison_label"]
-)
-
-faltantes = [
-    x for x in orden_comparaciones
-    if x not in presentes
-]
-
-if faltantes:
+if (
+    len(actual) != 12
+    or set(actual) != expected
+    or len(set(actual)) != 12
+):
     raise ValueError(
-        f"Faltan comparaciones: {faltantes}"
+        "Expected exactly one observation for each "
+        "cell line and comparison."
     )
 
-# ============================================================
-# CREAR FIGURA
-# ============================================================
+if (
+    not np.isfinite(sim_long["pearson"]).all()
+    or (sim_long["pearson"].abs() > 1).any()
+):
+    raise ValueError("Invalid Pearson correlations")
+
+means = [
+    sim_long.loc[
+        sim_long["comparison"] == code, "pearson"
+    ].mean()
+    for code in comparison_codes
+]
+
+print("Pearson means:", [round(x, 4) for x in means])
+
+# ------------------------------------------------------------
+# 3. Figure style and fixed layout
+# ------------------------------------------------------------
+
+plt.rcParams.update({
+    "font.family": "DejaVu Sans",
+    "font.size": 8.5,
+    "axes.labelsize": 9,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "axes.linewidth": 0.7,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42
+})
 
 fig = plt.figure(
-    figsize=(11.5, 5.3),
-    constrained_layout=True
+    figsize=(14.5 / 2.54, 9 / 2.54),
+    facecolor="white"
 )
 
-gs = fig.add_gridspec(
-    1,
-    2,
-    width_ratios=[0.9, 1.35]
+# Axes are positioned explicitly.
+# No constrained_layout or tight_layout.
+ax1 = fig.add_axes([0.085, 0.28, 0.34, 0.46])
+ax2 = fig.add_axes([0.545, 0.28, 0.415, 0.46])
+
+# Panel labels and titles occupy separate rows.
+fig.text(
+    0.035, 0.955, "A",
+    fontsize=12, fontweight="bold",
+    ha="left", va="top"
 )
 
-# ============================================================
-# PANEL A — PERMANOVA R²
-# ============================================================
-
-ax1 = fig.add_subplot(gs[0, 0])
-
-ax1.text(
-    -0.14,
-    1.04,
-    "A",
-    transform=ax1.transAxes,
-    fontsize=16,
-    fontweight="bold",
-    va="top"
+fig.text(
+    0.50, 0.955, "B",
+    fontsize=12, fontweight="bold",
+    ha="left", va="top"
 )
 
-espacios = [
-    "Full",
-    "Landmark"
-]
-
-x = np.arange(len(espacios))
-
-width = 0.32
-
-r2_treatment = [
-    0.1380151871065361,
-    0.14877538546041968
-]
-
-r2_context = [
-    0.4252446816912371,
-    0.42440058382449297
-]
-
-bars1 = ax1.bar(
-    x - width / 2,
-    r2_treatment,
-    width,
-    label="Treatment"
-)
-
-bars2 = ax1.bar(
-    x + width / 2,
-    r2_context,
-    width,
-    label="Context / block"
-)
-
-ax1.set_xticks(x)
-ax1.set_xticklabels(espacios)
-
-ax1.set_ylabel(
-    "Variance explained (R²)"
-)
-
-ax1.set_ylim(
-    0,
-    0.52
-)
-
-ax1.set_title(
+fig.text(
+    0.255, 0.92,
     "Global variance partitioning",
-    fontsize=11
+    fontsize=9.5, fontweight="bold",
+    ha="center", va="center"
 )
 
-ax1.legend(
-    frameon=False,
-    fontsize=9
+fig.text(
+    0.752, 0.92,
+    "Pairwise transcriptional similarity\nacross contexts",
+    fontsize=9.5, fontweight="bold",
+    ha="center", va="top"
 )
 
-for bars in [bars1, bars2]:
+# ============================================================
+# PANEL A — Variance partitioning
+# ============================================================
 
+x = np.arange(2)
+width = 0.30
+
+r2_t = [0.1380151871065361, 0.14877538546041968]
+r2_c = [0.4252446816912371, 0.42440058382449297]
+
+blue = "#0072B2"
+orange = "#E69F00"
+
+bars_t = ax1.bar(
+    x - width / 2, r2_t, width,
+    color=blue, edgecolor="black", linewidth=0.35
+)
+
+bars_c = ax1.bar(
+    x + width / 2, r2_c, width,
+    color=orange, edgecolor="black", linewidth=0.35
+)
+
+ax1.set_xticks(x, ["Full", "Landmark"])
+ax1.set_ylabel("Variance explained (R²)")
+ax1.set_ylim(0, 0.55)
+
+ax1.spines["top"].set_visible(False)
+ax1.spines["right"].set_visible(False)
+
+for bars in (bars_t, bars_c):
     for bar in bars:
-
-        valor = bar.get_height()
-
-        ax1.text(
-            bar.get_x() + bar.get_width() / 2,
-            valor + 0.012,
-            f"{valor:.2f}",
-            ha="center",
-            va="bottom",
-            fontsize=8.5
+        ax1.annotate(
+            f"{bar.get_height():.2f}",
+            (
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height()
+            ),
+            xytext=(0, 3),
+            textcoords="offset points",
+            ha="center", va="bottom",
+            fontsize=8
         )
 
-# p exactos sólo para Treatment
-ax1.text(
-    x[0] - width / 2,
-    r2_treatment[0] + 0.065,
-    f"p = {p_full:.3f}",
-    ha="center",
-    fontsize=8
-)
+# p-values placed below the treatment bars,
+# outside the plot, in a separate line.
+for i, (bar, p) in enumerate(zip(bars_t, p_values)):
+    ax1.annotate(
+        f"p = {p:.3f}",
+        (
+            bar.get_x() + bar.get_width() / 2,
+            0
+        ),
+        xytext=(0, -27),
+        textcoords="offset points",
+        ha="center", va="top",
+        fontsize=7.4,
+        annotation_clip=False
+    )
 
-ax1.text(
-    x[1] - width / 2,
-    r2_treatment[1] + 0.065,
-    f"p = {p_landmark:.3f}",
-    ha="center",
-    fontsize=8
-)
-
-ax1.text(
-    0.5,
-    -0.17,
-    "Exact within-block permutations for treatment;\n"
-    "context/block R² shown descriptively.",
-    transform=ax1.transAxes,
-    ha="center",
-    va="top",
-    fontsize=8
+# Treatment legend, clearly separated from title.
+fig.legend(
+    handles=[
+        Patch(facecolor=blue, label="Treatment"),
+        Patch(facecolor=orange, label="Context / block")
+    ],
+    loc="center",
+    bbox_to_anchor=(0.255, 0.82),
+    ncol=2,
+    frameon=False,
+    fontsize=7.7,
+    handlelength=1.0,
+    columnspacing=1.0
 )
 
 # ============================================================
-# PANEL B — PEARSON POR CONTEXTO
+# PANEL B — Pearson correlations
 # ============================================================
-
-ax2 = fig.add_subplot(gs[0, 1])
-
-ax2.text(
-    -0.10,
-    1.04,
-    "B",
-    transform=ax2.transAxes,
-    fontsize=16,
-    fontweight="bold",
-    va="top"
-)
-
-contextos = [
-    "A549",
-    "HA1E",
-    "PC3",
-    "VCAP"
-]
-
-offsets = {
-    "A549": -0.12,
-    "HA1E": -0.04,
-    "PC3": 0.04,
-    "VCAP": 0.12
-}
 
 markers = {
     "A549": "o",
@@ -338,145 +285,165 @@ markers = {
     "VCAP": "D"
 }
 
-for i, comparacion in enumerate(
-    orden_comparaciones
-):
+colors = {
+    "A549": "#0072B2",
+    "HA1E": "#E69F00",
+    "PC3": "#009E73",
+    "VCAP": "#CC79A7"
+}
 
-    temp = sim_plot[
-        sim_plot["comparison_label"]
-        == comparacion
-    ].copy()
+offsets = {
+    "A549": -0.18,
+    "HA1E": -0.06,
+    "PC3": 0.06,
+    "VCAP": 0.18
+}
 
-    for contexto in contextos:
+for i, code in enumerate(comparison_codes):
+    subset = sim_long.loc[
+        sim_long["comparison"] == code
+    ]
 
-        fila = temp[
-            temp["cell_id"].astype(str)
-            == contexto
-        ]
-
-        if len(fila) == 0:
-            continue
-
-        valor = float(
-            fila["pearson"].iloc[0]
-        )
+    for cell in cells:
+        row = subset.loc[
+            subset["cell_id"] == cell
+        ].iloc[0]
 
         ax2.scatter(
-            i + offsets[contexto],
-            valor,
-            s=58,
-            marker=markers[contexto],
-            label=contexto
-            if i == 0
-            else None,
+            i + offsets[cell],
+            row["pearson"],
+            s=55,
+            marker=markers[cell],
+            color=colors[cell],
             edgecolors="black",
             linewidths=0.5,
             zorder=3
         )
 
-    valores = pd.to_numeric(
-        temp["pearson"],
-        errors="coerce"
-    ).dropna()
-
-    media = valores.mean()
-
     ax2.plot(
-        [
-            i - 0.23,
-            i + 0.23
-        ],
-        [
-            media,
-            media
-        ],
-        linewidth=2.2, 
+        [i - 0.25, i + 0.25],
+        [means[i], means[i]],
         color="black",
+        linewidth=1.8,
         zorder=2
     )
 
-    ax2.text(
-        i,
-        media + 0.035,
-        f"mean = {media:.2f}",
+    ax2.annotate(
+        f"Mean = {means[i]:.2f}",
+        (i, means[i]),
+        xytext=(0, -18) if i == 1 else (0, 7),
+        textcoords="offset points",
         ha="center",
         va="bottom",
-        fontsize=8
+        fontsize=7.3,
+        fontweight="bold",
+        bbox=dict(
+            facecolor="white",
+            edgecolor="none",
+            alpha=0.85,
+            pad=1
+        )
     )
 
 ax2.axhline(
-    0,
-    linewidth=0.6
+    0, color="#999999",
+    linewidth=0.7, zorder=1
 )
 
-ax2.set_xticks(
-    np.arange(
-        len(orden_comparaciones)
+ax2.set_xlim(-0.42, 2.42)
+ax2.set_ylim(-0.16, 0.63)
+
+ax2.set_xticks([0, 1, 2])
+ax2.set_xticklabels([
+    "Calcitriol vs\nCalcipotriol",
+    "Estradiol vs\nCalcitriol",
+    "Estradiol vs\nCalcipotriol"
+], fontsize=7.3)
+
+ax2.set_ylabel("Pearson correlation")
+
+ax2.spines["top"].set_visible(False)
+ax2.spines["right"].set_visible(False)
+
+# ------------------------------------------------------------
+# 4. Separate notes and legend
+# ------------------------------------------------------------
+
+fig.text(
+    0.255, 0.105,
+    "Treatment: exact within-block permutations\n"
+    "Context/block R²: descriptive",
+    ha="center",
+    va="center",
+    fontsize=7.2,
+    color="#444444"
+)
+
+handles = [
+    Line2D(
+        [0], [0],
+        marker=markers[cell],
+        linestyle="None",
+        markerfacecolor=colors[cell],
+        markeredgecolor="black",
+        markeredgewidth=0.5,
+        markersize=6,
+        label=cell
     )
-)
+    for cell in cells
+]
 
-ax2.set_xticklabels(
-    [
-        "Calcitriol vs\nCalcipotriol",
-        "Estradiol vs\nCalcitriol",
-        "Estradiol vs\nCalcipotriol"
-    ],
-    fontsize=8.5
-)
-
-ax2.set_ylabel(
-    "Pearson correlation"
-)
-
-ax2.set_title(
-    "Pairwise transcriptional similarity across contexts",
-    fontsize=11
-)
-
-ax2.legend(
-    title="Cell line",
-    frameon=False,
+fig.text(
+    0.752, 0.165,
+    "Cell line",
+    ha="center",
+    va="center",
     fontsize=8,
-    title_fontsize=8,
-    loc="best"
+    fontweight="bold"
 )
 
-# ============================================================
-# GUARDAR
-# ============================================================
+fig.legend(
+    handles=handles,
+    loc="center",
+    bbox_to_anchor=(0.752, 0.105),
+    ncol=4,
+    frameon=False,
+    fontsize=7.5,
+    columnspacing=0.85,
+    handletextpad=0.3
+)
+
+# ------------------------------------------------------------
+# 5. Save and overwrite
+# ------------------------------------------------------------
+
+OUTPUT.mkdir(parents=True, exist_ok=True)
+
+pdf_path = OUTPUT / "Figure_2_global_variance_similarity.pdf"
+png_path = OUTPUT / "Figure_2_global_variance_similarity.png"
+csv_path = OUTPUT / "Figure_2_PERMANOVA_values.csv"
 
 fig.savefig(
-    "Figure_2_global_variance_similarity.pdf",
-    bbox_inches="tight"
+    pdf_path,
+    format="pdf",
+    bbox_inches=None,
+    facecolor="white"
 )
 
 fig.savefig(
-    "Figure_2_global_variance_similarity.png",
+    png_path,
+    format="png",
     dpi=600,
-    bbox_inches="tight"
+    bbox_inches=None,
+    facecolor="white"
 )
 
-permanova.to_csv(
-    "Figure_2_PERMANOVA_values.csv",
-    index=False
-)
+permanova.to_csv(csv_path, index=False)
 
 plt.close(fig)
 
-print("\n" + "=" * 90)
-print("ARCHIVOS GENERADOS")
-print("=" * 90)
-
-print(
-    "- Figure_2_global_variance_similarity.pdf"
-)
-
-print(
-    "- Figure_2_global_variance_similarity.png"
-)
-
-print(
-    "- Figure_2_PERMANOVA_values.csv"
-)
-
-print("\nFIGURA 2 COMPLETADA")
+print("\nFIGURE 2 GENERATED")
+print("Size: 14.5 x 9 cm")
+print("PDF:", pdf_path)
+print("PNG:", png_path)
+print("CSV:", csv_path)

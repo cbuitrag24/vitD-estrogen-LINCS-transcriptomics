@@ -1,419 +1,714 @@
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-print("=" * 90)
-print("FIGURA 3 — CONVERGENCIA GÉNICA ENTRE TRATAMIENTOS")
-print("=" * 90)
+from pathlib import Path
+from matplotlib.colors import Normalize
+from matplotlib.patches import Patch
 
 # ============================================================
-# ARCHIVOS
+# FIGURE 3 — CORRECTED A4 LANDSCAPE VERSION
+# Gene-level convergence between treatments
+#
+# Size: 29.7 x 21 cm
+# PDF vector + PNG 600 dpi
 # ============================================================
 
-archivo_resumen = "ENRIQUECIMIENTO_resumen_same_direction.csv"
-archivo_direccion = "ENRIQUECIMIENTO_solapamiento_resultados.csv"
+SOURCE = Path(
+    r"C:\Users\petri\LINCS_Estradiol_VitaminaD"
+)
 
-resumen = pd.read_csv(archivo_resumen)
-direccion = pd.read_csv(archivo_direccion)
+REPO = Path(
+    r"C:\Users\petri\vitD-estrogen-LINCS-transcriptomics"
+)
 
-print("\nResumen same-direction:")
-print(resumen.to_string(index=False))
+OUTPUT = REPO / "results" / "figures"
 
-print("\nResultados por dirección:")
-print(direccion.to_string(index=False))
+SUMMARY_NAME = "ENRIQUECIMIENTO_resumen_same_direction.csv"
+DIRECTION_NAME = "ENRIQUECIMIENTO_solapamiento_resultados.csv"
+
+print("=" * 75)
+print("FIGURE 3 — CORRECTED PUBLICATION VERSION")
+print("=" * 75)
+
 
 # ============================================================
-# NOMBRES PARA LA FIGURA
+# 1. LOCATE ORIGINAL FILES
 # ============================================================
 
-mapa_nombres = {
-    "calcitriol_vs_calcipotriol":
-        "Calcitriol vs\nCalcipotriol",
+def locate_file(filename):
+    candidates = []
 
-    "estradiol_vs_calcitriol":
-        "Estradiol vs\nCalcitriol",
+    for folder in (SOURCE, REPO):
+        if folder.is_dir():
+            candidates.extend(
+                p for p in folder.rglob(filename)
+                if p.is_file()
+            )
 
-    "estradiol_vs_calcipotriol":
-        "Estradiol vs\nCalcipotriol"
-}
+    unique = {
+        str(p.resolve()).lower(): p
+        for p in candidates
+    }
 
-orden = [
+    if len(unique) != 1:
+        raise FileNotFoundError(
+            f"Expected one copy of {filename}; "
+            f"found {len(unique)}:\n"
+            + "\n".join(str(p) for p in unique.values())
+        )
+
+    return next(iter(unique.values()))
+
+
+summary_path = locate_file(SUMMARY_NAME)
+direction_path = locate_file(DIRECTION_NAME)
+
+print("Summary:", summary_path)
+print("Direction:", direction_path)
+
+resumen = pd.read_csv(summary_path)
+direccion = pd.read_csv(direction_path)
+
+
+# ============================================================
+# 2. VALIDATE ORIGINAL RESULTS
+# ============================================================
+
+required_summary = [
+    "analysis_space",
+    "comparison",
+    "observed_same_direction",
+    "expected_same_direction",
+    "fold_same_direction"
+]
+
+required_direction = [
+    "analysis_space",
+    "comparison",
+    "direction",
+    "observed_overlap",
+    "expected_overlap",
+    "fold_enrichment",
+    "p_hypergeom",
+    "q_BH"
+]
+
+for col in required_summary:
+    if col not in resumen.columns:
+        raise ValueError(f"Missing summary column: {col}")
+
+for col in required_direction:
+    if col not in direccion.columns:
+        raise ValueError(f"Missing direction column: {col}")
+
+
+comparison_order = [
     "calcitriol_vs_calcipotriol",
     "estradiol_vs_calcitriol",
     "estradiol_vs_calcipotriol"
 ]
 
-# ============================================================
-# FIGURA
-# ============================================================
+spaces = [
+    "full_12328_genes",
+    "landmark_978_genes"
+]
 
-fig = plt.figure(
-    figsize=(12.5, 9.0),
-    constrained_layout=True
-)
+names = {
+    "calcitriol_vs_calcipotriol":
+        "Calcitriol vs\nCalcipotriol",
+    "estradiol_vs_calcitriol":
+        "Estradiol vs\nCalcitriol",
+    "estradiol_vs_calcipotriol":
+        "Estradiol vs\nCalcipotriol"
+}
 
-gs = fig.add_gridspec(
-    2,
-    2,
-    height_ratios=[1, 1.08]
-)
-
-ax1 = fig.add_subplot(gs[0, 0])
-ax2 = fig.add_subplot(gs[0, 1])
-ax3 = fig.add_subplot(gs[1, :])
-
-# ============================================================
-# FUNCIÓN PARA PANELES A Y B
-# ============================================================
-
-def plot_observed_expected(ax, data, title, panel_letter):
-
-    data = (
-        data
-        .set_index("comparison")
-        .loc[orden]
-        .reset_index()
-    )
-
-    x = np.arange(len(data))
-    width = 0.34
-
-    observed = data["observed_same_direction"].values
-    expected = data["expected_same_direction"].values
-    fold = data["fold_same_direction"].values
-
-    bars_obs = ax.bar(
-        x - width / 2,
-        observed,
-        width,
-        label="Observed"
-    )
-
-    bars_exp = ax.bar(
-        x + width / 2,
-        expected,
-        width,
-        label="Expected"
-    )
-
-    ax.set_xticks(x)
-
-    ax.set_xticklabels(
-        [
-            mapa_nombres[c]
-            for c in data["comparison"]
-        ],
-        fontsize=9
-    )
-
-    ax.set_ylabel(
-        "Same-direction genes"
-    )
-
-    ax.set_title(
-        title,
-        fontsize=11
-    )
-
-    ax.legend(
-        frameon=False,
-        fontsize=9
-    )
-
-    ax.text(
-        -0.11,
-        1.05,
-        panel_letter,
-        transform=ax.transAxes,
-        fontsize=16,
-        fontweight="bold",
-        va="top"
-    )
-
-    # Etiquetas observadas
-    for bar, value in zip(
-        bars_obs,
-        observed
-    ):
-
-        ax.text(
-            bar.get_x()
-            + bar.get_width() / 2,
-            bar.get_height()
-            + max(observed) * 0.025,
-            f"{int(value)}",
-            ha="center",
-            va="bottom",
-            fontsize=8.5
-        )
-
-    # Etiquetas esperadas
-    for bar, value in zip(
-        bars_exp,
-        expected
-    ):
-
-        ax.text(
-            bar.get_x()
-            + bar.get_width() / 2,
-            bar.get_height()
-            + max(observed) * 0.025,
-            f"{value:.1f}",
-            ha="center",
-            va="bottom",
-            fontsize=8
-        )
-
-    # Fold enrichment
-    for i, f in enumerate(fold):
-
-        ymax = max(
-            observed[i],
-            expected[i]
-        )
-
-        ax.text(
-            i,
-            ymax
-            + max(observed) * 0.11,
-            f"{f:.2f}×",
-            ha="center",
-            va="bottom",
-            fontsize=9,
-            fontweight="bold"
-        )
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-
-
-# ============================================================
-# PANEL A — FULL
-# ============================================================
-
-full = resumen[
-    resumen["analysis_space"]
-    == "full_12328_genes"
-].copy()
-
-plot_observed_expected(
-    ax1,
-    full,
-    "Full L1000 gene space",
-    "A"
-)
-
-# ============================================================
-# PANEL B — LANDMARK
-# ============================================================
-
-landmark = resumen[
-    resumen["analysis_space"]
-    == "landmark_978_genes"
-].copy()
-
-plot_observed_expected(
-    ax2,
-    landmark,
-    "Landmark genes",
-    "B"
-)
-
-# ============================================================
-# PANEL C — FOLD ENRICHMENT POR DIRECCIÓN
-# ============================================================
-
-ax3.text(
-    -0.055,
-    1.05,
-    "C",
-    transform=ax3.transAxes,
-    fontsize=16,
-    fontweight="bold",
-    va="top"
-)
-
-# Orden de columnas
-columnas = [
+columns = [
     ("full_12328_genes", "up", "Full\nUp"),
     ("full_12328_genes", "down", "Full\nDown"),
     ("landmark_978_genes", "up", "Landmark\nUp"),
     ("landmark_978_genes", "down", "Landmark\nDown")
 ]
 
-matriz_fold = np.zeros(
-    (
-        len(orden),
-        len(columnas)
+expected_summary = {
+    (space, comparison)
+    for space in spaces
+    for comparison in comparison_order
+}
+
+actual_summary = list(zip(
+    resumen["analysis_space"],
+    resumen["comparison"]
+))
+
+if (
+    len(actual_summary) != 6
+    or len(set(actual_summary)) != 6
+    or set(actual_summary) != expected_summary
+):
+    raise ValueError(
+        "Summary must contain exactly six combinations."
     )
+
+
+expected_direction = {
+    (space, comparison, direction)
+    for space in spaces
+    for comparison in comparison_order
+    for direction in ("up", "down")
+}
+
+actual_direction = list(zip(
+    direccion["analysis_space"],
+    direccion["comparison"],
+    direccion["direction"]
+))
+
+if (
+    len(actual_direction) != 12
+    or len(set(actual_direction)) != 12
+    or set(actual_direction) != expected_direction
+):
+    raise ValueError(
+        "Direction data must contain exactly 12 combinations."
+    )
+
+
+numeric_summary = [
+    "observed_same_direction",
+    "expected_same_direction",
+    "fold_same_direction"
+]
+
+numeric_direction = [
+    "observed_overlap",
+    "expected_overlap",
+    "fold_enrichment",
+    "p_hypergeom",
+    "q_BH"
+]
+
+for col in numeric_summary:
+    resumen[col] = pd.to_numeric(
+        resumen[col], errors="raise"
+    )
+
+for col in numeric_direction:
+    direccion[col] = pd.to_numeric(
+        direccion[col], errors="raise"
+    )
+
+if not np.isfinite(
+    resumen[numeric_summary].to_numpy()
+).all():
+    raise ValueError("Invalid summary values.")
+
+if not np.isfinite(
+    direccion[numeric_direction].to_numpy()
+).all():
+    raise ValueError("Invalid direction values.")
+
+if (resumen[numeric_summary] < 0).any().any():
+    raise ValueError("Negative summary values.")
+
+if (
+    direccion[
+        ["observed_overlap", "expected_overlap", "fold_enrichment"]
+    ] < 0
+).any().any():
+    raise ValueError("Negative overlap values.")
+
+if (
+    (direccion[["p_hypergeom", "q_BH"]] < 0).any().any()
+    or
+    (direccion[["p_hypergeom", "q_BH"]] > 1).any().any()
+):
+    raise ValueError("Invalid p or q values.")
+
+
+# ============================================================
+# 3. PUBLICATION STYLE
+# ============================================================
+
+plt.rcParams.update({
+    "font.family": "DejaVu Sans",
+    "font.size": 11,
+    "axes.titlesize": 13,
+    "axes.labelsize": 11.5,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "axes.linewidth": 0.8,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42,
+    "savefig.facecolor": "white"
+})
+
+
+# ============================================================
+# 4. CREATE A4 LANDSCAPE FIGURE
+# ============================================================
+
+fig = plt.figure(
+    figsize=(29.7 / 2.54, 21 / 2.54),
+    facecolor="white"
 )
 
-matriz_q = np.ones(
-    (
-        len(orden),
-        len(columnas)
-    )
+# Fixed axes positions
+ax1 = fig.add_axes([0.085, 0.565, 0.385, 0.305])
+ax2 = fig.add_axes([0.575, 0.565, 0.385, 0.305])
+
+ax3 = fig.add_axes([0.235, 0.145, 0.635, 0.285])
+cax = fig.add_axes([0.89, 0.145, 0.018, 0.285])
+
+
+# ============================================================
+# 5. PANEL LETTERS — SEPARATE FROM TITLES
+# ============================================================
+
+fig.text(
+    0.025, 0.975, "A",
+    fontsize=18,
+    fontweight="bold",
+    ha="left", va="top"
 )
 
-for i, comparacion in enumerate(orden):
+fig.text(
+    0.515, 0.975, "B",
+    fontsize=18,
+    fontweight="bold",
+    ha="left", va="top"
+)
 
-    for j, (
-        espacio,
-        direc,
-        _
-    ) in enumerate(columnas):
+fig.text(
+    0.025, 0.495, "C",
+    fontsize=18,
+    fontweight="bold",
+    ha="left", va="top"
+)
 
-        fila = direccion[
+
+# ============================================================
+# 6. PANEL A AND B TITLES — FIGURE COORDINATES
+# ============================================================
+
+# Titles are NOT attached to the axes.
+# This prevents collisions with legends.
+
+fig.text(
+    0.2775, 0.945,
+    "Full L1000 gene space",
+    ha="center",
+    va="center",
+    fontsize=13,
+    fontweight="bold"
+)
+
+fig.text(
+    0.7675, 0.945,
+    "Landmark genes",
+    ha="center",
+    va="center",
+    fontsize=13,
+    fontweight="bold"
+)
+
+
+# ============================================================
+# 7. OBSERVED / EXPECTED LEGENDS
+# ============================================================
+
+observed_color = "#0072B2"
+expected_color = "#E69F00"
+
+legend_handles = [
+    Patch(
+        facecolor=observed_color,
+        edgecolor="black",
+        linewidth=0.4,
+        label="Observed"
+    ),
+    Patch(
+        facecolor=expected_color,
+        edgecolor="black",
+        linewidth=0.4,
+        label="Expected"
+    )
+]
+
+# Legend A — below its title
+fig.legend(
+    handles=legend_handles,
+    loc="center",
+    bbox_to_anchor=(0.2775, 0.905),
+    ncol=2,
+    frameon=False,
+    fontsize=11,
+    handlelength=1.5,
+    columnspacing=2
+)
+
+# Legend B — below its title
+fig.legend(
+    handles=legend_handles,
+    loc="center",
+    bbox_to_anchor=(0.7675, 0.905),
+    ncol=2,
+    frameon=False,
+    fontsize=11,
+    handlelength=1.5,
+    columnspacing=2
+)
+
+
+# ============================================================
+# 8. PLOT OBSERVED VS EXPECTED
+# ============================================================
+
+def plot_observed_expected(ax, space):
+
+    data = (
+        resumen.loc[
+            resumen["analysis_space"] == space
+        ]
+        .set_index("comparison")
+        .loc[comparison_order]
+    )
+
+    x = np.arange(3)
+    width = 0.32
+
+    observed = data[
+        "observed_same_direction"
+    ].to_numpy()
+
+    expected = data[
+        "expected_same_direction"
+    ].to_numpy()
+
+    fold = data[
+        "fold_same_direction"
+    ].to_numpy()
+
+    bars_observed = ax.bar(
+        x - width / 2,
+        observed,
+        width,
+        color=observed_color,
+        edgecolor="black",
+        linewidth=0.4,
+        zorder=3
+    )
+
+    bars_expected = ax.bar(
+        x + width / 2,
+        expected,
+        width,
+        color=expected_color,
+        edgecolor="black",
+        linewidth=0.4,
+        zorder=3
+    )
+
+    max_height = float(
+        max(np.max(observed), np.max(expected))
+    )
+
+    ax.set_ylim(0, max_height * 1.34)
+    ax.set_xlim(-0.52, 2.52)
+
+    ax.set_xticks(x)
+
+    ax.set_xticklabels(
+        [names[c] for c in comparison_order],
+        fontsize=9.4
+    )
+
+    ax.set_ylabel("Same-direction genes")
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    ax.tick_params(
+        direction="out",
+        length=4,
+        width=0.8
+    )
+
+    for bar, value in zip(bars_observed, observed):
+        ax.annotate(
+            f"{value:.0f}",
             (
-                direccion["comparison"]
-                == comparacion
-            )
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height()
+            ),
+            xytext=(0, 4),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            color="#202020"
+        )
+
+    for bar, value in zip(bars_expected, expected):
+        ax.annotate(
+            f"{value:.1f}",
+            (
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height()
+            ),
+            xytext=(0, 4),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            color="#202020"
+        )
+
+    for i, value in enumerate(fold):
+        height = max(observed[i], expected[i])
+
+        ax.text(
+            i,
+            height + max_height * 0.14,
+            f"{value:.2f}×",
+            ha="center",
+            va="center",
+            fontsize=11.5,
+            fontweight="bold",
+            color="#202020"
+        )
+
+    ax.grid(
+        axis="y",
+        color="#E6E6E6",
+        linewidth=0.6,
+        zorder=0
+    )
+
+
+plot_observed_expected(
+    ax1,
+    "full_12328_genes"
+)
+
+plot_observed_expected(
+    ax2,
+    "landmark_978_genes"
+)
+
+
+# ============================================================
+# 9. PANEL C — DIRECTION-SPECIFIC ENRICHMENT
+# ============================================================
+
+fold_matrix = np.empty((3, 4))
+q_matrix = np.empty((3, 4))
+
+for i, comparison in enumerate(comparison_order):
+
+    for j, (space, direction, _) in enumerate(columns):
+
+        row = direccion.loc[
+            (direccion["comparison"] == comparison)
             &
-            (
-                direccion["analysis_space"]
-                == espacio
-            )
+            (direccion["analysis_space"] == space)
             &
-            (
-                direccion["direction"]
-                == direc
-            )
+            (direccion["direction"] == direction)
         ]
 
-        if len(fila) != 1:
+        if len(row) != 1:
             raise ValueError(
-                f"Problema al localizar: "
-                f"{comparacion}, {espacio}, {direc}"
+                f"Missing or duplicated combination: "
+                f"{comparison}, {space}, {direction}"
             )
 
-        matriz_fold[i, j] = (
-            fila["fold_enrichment"]
-            .iloc[0]
+        fold_matrix[i, j] = (
+            row["fold_enrichment"].iloc[0]
         )
 
-        matriz_q[i, j] = (
-            fila["q_BH"]
-            .iloc[0]
+        q_matrix[i, j] = (
+            row["q_BH"].iloc[0]
         )
 
-# Heatmap
+
+norm = Normalize(
+    vmin=float(np.min(fold_matrix)),
+    vmax=float(np.max(fold_matrix))
+)
+
+if norm.vmin == norm.vmax:
+    raise ValueError(
+        "All enrichment values are identical."
+    )
+
 im = ax3.imshow(
-    matriz_fold,
+    fold_matrix,
+    cmap="viridis",
+    norm=norm,
     aspect="auto",
-    cmap="viridis"
+    interpolation="nearest"
 )
 
-ax3.set_xticks(
-    np.arange(
-        len(columnas)
-    )
-)
-
+ax3.set_xticks(range(4))
 ax3.set_xticklabels(
-    [
-        c[2]
-        for c in columnas
-    ],
-    fontsize=9
+    [col[2] for col in columns],
+    fontsize=11
 )
 
-ax3.set_yticks(
-    np.arange(
-        len(orden)
-    )
-)
-
+ax3.set_yticks(range(3))
 ax3.set_yticklabels(
     [
-        mapa_nombres[c]
-        .replace("\n", " ")
-        for c in orden
+        names[c].replace("\n", " ")
+        for c in comparison_order
     ],
-    fontsize=9
+    fontsize=10.5
 )
 
 ax3.set_title(
     "Direction-specific overlap enrichment",
-    fontsize=11
+    fontsize=13,
+    fontweight="bold",
+    pad=13
 )
 
-# Texto dentro de cada celda
-for i in range(
-    matriz_fold.shape[0]
-):
+ax3.tick_params(length=0, pad=8)
 
-    for j in range(
-        matriz_fold.shape[1]
-    ):
+# White borders between cells
+ax3.set_xticks(
+    np.arange(-0.5, 4, 1),
+    minor=True
+)
 
-        fold = matriz_fold[i, j]
-        q = matriz_q[i, j]
+ax3.set_yticks(
+    np.arange(-0.5, 3, 1),
+    minor=True
+)
+
+ax3.grid(
+    which="minor",
+    color="white",
+    linewidth=2
+)
+
+ax3.tick_params(
+    which="minor",
+    bottom=False,
+    left=False
+)
+
+
+# ============================================================
+# 10. HEATMAP LABELS AND SIGNIFICANCE
+# ============================================================
+
+cmap = plt.get_cmap("viridis")
+
+for i in range(3):
+    for j in range(4):
+
+        fold = fold_matrix[i, j]
+        q = q_matrix[i, j]
 
         if q < 0.001:
-            estrella = "***"
+            stars = "***"
         elif q < 0.01:
-            estrella = "**"
+            stars = "**"
         elif q < 0.05:
-            estrella = "*"
+            stars = "*"
         else:
-            estrella = ""
+            stars = ""
+
+        rgba = cmap(norm(fold))
+
+        luminance = (
+            0.2126 * rgba[0]
+            + 0.7152 * rgba[1]
+            + 0.0722 * rgba[2]
+        )
+
+        text_color = (
+            "#111111"
+            if luminance > 0.52
+            else "white"
+        )
 
         ax3.text(
             j,
             i,
-            f"{fold:.2f}×{estrella}",
+            f"{fold:.2f}×{stars}",
             ha="center",
             va="center",
-            fontsize=9,
-            fontweight="bold"
-            if q < 0.05
-            else "normal",
-            color="white"
-            if fold > 1.7
-            else "black"
+            fontsize=12,
+            fontweight="bold" if stars else "normal",
+            color=text_color
         )
 
-# Colorbar
-cbar = fig.colorbar(
-    im,
-    ax=ax3,
-    fraction=0.025,
-    pad=0.02
-)
+
+# ============================================================
+# 11. COLOUR BAR AND STATISTICAL NOTE
+# ============================================================
+
+cbar = fig.colorbar(im, cax=cax)
 
 cbar.set_label(
     "Fold enrichment",
-    fontsize=9
+    fontsize=11,
+    labelpad=12
 )
 
-# Nota estadística
-ax3.text(
-    0.5,
-    -0.22,
-    "* BH-adjusted P < 0.05; ** P < 0.01; *** P < 0.001",
-    transform=ax3.transAxes,
+cbar.ax.tick_params(labelsize=10)
+
+fig.text(
+    0.55,
+    0.065,
+    "* BH-adjusted P < 0.05; "
+    "** P < 0.01; "
+    "*** P < 0.001",
     ha="center",
-    va="top",
-    fontsize=8.5
+    va="center",
+    fontsize=10,
+    color="#333333"
 )
 
+
 # ============================================================
-# GUARDAR
+# 12. EXPORT — OVERWRITE PREVIOUS FILES
 # ============================================================
 
+OUTPUT.mkdir(parents=True, exist_ok=True)
+
+pdf_path = (
+    OUTPUT / "Figure_3_gene_level_convergence.pdf"
+)
+
+png_path = (
+    OUTPUT / "Figure_3_gene_level_convergence.png"
+)
+
+csv_path = (
+    OUTPUT / "Figure_3_gene_overlap_values.csv"
+)
+
+# Exact A4 dimensions: no tight bounding box
 fig.savefig(
-    "Figure_3_gene_level_convergence.pdf",
-    bbox_inches="tight"
+    pdf_path,
+    format="pdf",
+    bbox_inches=None,
+    facecolor="white"
 )
 
 fig.savefig(
-    "Figure_3_gene_level_convergence.png",
+    png_path,
+    format="png",
     dpi=600,
-    bbox_inches="tight"
+    bbox_inches=None,
+    facecolor="white"
 )
 
-# Tabla auditiva utilizada
-tabla_figura3 = direccion[
+audit_table = direccion[
     [
         "analysis_space",
         "comparison",
@@ -426,27 +721,17 @@ tabla_figura3 = direccion[
     ]
 ].copy()
 
-tabla_figura3.to_csv(
-    "Figure_3_gene_overlap_values.csv",
+audit_table.to_csv(
+    csv_path,
     index=False
 )
 
 plt.close(fig)
 
-print("\n" + "=" * 90)
-print("ARCHIVOS GENERADOS")
-print("=" * 90)
-
-print(
-    "- Figure_3_gene_level_convergence.pdf"
-)
-
-print(
-    "- Figure_3_gene_level_convergence.png"
-)
-
-print(
-    "- Figure_3_gene_overlap_values.csv"
-)
-
-print("\nFIGURA 3 COMPLETADA")
+print("\n" + "=" * 75)
+print("FIGURE 3 GENERATED SUCCESSFULLY")
+print("=" * 75)
+print("Size: A4 landscape — 29.7 x 21 cm")
+print("PDF:", pdf_path)
+print("PNG:", png_path)
+print("Audit CSV:", csv_path)

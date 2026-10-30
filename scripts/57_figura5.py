@@ -1,45 +1,95 @@
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import TwoSlopeNorm
+
 from pathlib import Path
-
-print("=" * 90)
-print("FIGURA 5 — DEPENDENCIA DEL CONTEXTO CELULAR")
-print("=" * 90)
+from matplotlib.colors import TwoSlopeNorm
 
 # ============================================================
-# ARCHIVOS
+# FIGURE 5 — CELLULAR CONTEXT DEPENDENCE
+# Publication version
+# A4 landscape: 29.7 x 21 cm
+# Vector PDF + PNG 600 dpi
 # ============================================================
 
-archivo_full = Path("HALLMARK_CONTEXTO_matriz.csv")
-archivo_lm = Path("HALLMARK_CONTEXTO_LM_consenso.csv")
-archivo_resumen_full = Path("HALLMARK_CONTEXTO_resumen.csv")
-archivo_resumen_lm = Path("HALLMARK_CONTEXTO_LM_resumen.csv")
+SOURCE = Path(
+    r"C:\Users\petri\LINCS_Estradiol_VitaminaD"
+)
 
-for archivo in [
-    archivo_full,
-    archivo_lm,
-    archivo_resumen_full,
-    archivo_resumen_lm
-]:
-    if not archivo.exists():
+REPO = Path(
+    r"C:\Users\petri\vitD-estrogen-LINCS-transcriptomics"
+)
+
+OUTPUT = REPO / "results" / "figures"
+
+print("=" * 75)
+print("FIGURE 5 — CELLULAR CONTEXT DEPENDENCE")
+print("=" * 75)
+
+
+# ============================================================
+# 1. LOCATE ORIGINAL DATA FILES
+# ============================================================
+
+def locate_file(filename):
+
+    candidates = []
+
+    for folder in (SOURCE, REPO):
+
+        if folder.is_dir():
+
+            candidates.extend(
+                p for p in folder.rglob(filename)
+                if p.is_file()
+            )
+
+    unique = {
+        str(p.resolve()).lower(): p
+        for p in candidates
+    }
+
+    if len(unique) != 1:
+
         raise FileNotFoundError(
-            f"No se encontró: {archivo.name}"
+            f"Expected one copy of {filename}; "
+            f"found {len(unique)}:\n"
+            + "\n".join(str(p) for p in unique.values())
         )
 
-full = pd.read_csv(archivo_full)
-lm = pd.read_csv(archivo_lm)
-resumen_full = pd.read_csv(archivo_resumen_full)
-resumen_lm = pd.read_csv(archivo_resumen_lm)
+    return next(iter(unique.values()))
 
-print("\nArchivos cargados correctamente.")
+
+files = {
+    "full": "HALLMARK_CONTEXTO_matriz.csv",
+    "landmark": "HALLMARK_CONTEXTO_LM_consenso.csv",
+    "summary_full": "HALLMARK_CONTEXTO_resumen.csv",
+    "summary_landmark": "HALLMARK_CONTEXTO_LM_resumen.csv"
+}
+
+paths = {
+    key: locate_file(filename)
+    for key, filename in files.items()
+}
+
+for key, path in paths.items():
+    print(f"{key}: {path}")
+
+full = pd.read_csv(paths["full"])
+landmark = pd.read_csv(paths["landmark"])
+
+summary_full = pd.read_csv(paths["summary_full"])
+summary_landmark = pd.read_csv(paths["summary_landmark"])
+
 
 # ============================================================
-# ORDEN DE CONTEXTOS Y HALLMARKS
+# 2. DEFINE ORIGINAL ORDER
 # ============================================================
 
-contextos = [
+contexts = [
     "A549",
     "HA1E",
     "PC3",
@@ -52,22 +102,17 @@ hallmarks = [
     "HALLMARK_MYC_TARGETS_V1"
 ]
 
-hallmark_labels = {
-    "HALLMARK_E2F_TARGETS":
-        "E2F TARGETS",
-
-    "HALLMARK_G2M_CHECKPOINT":
-        "G2M CHECKPOINT",
-
-    "HALLMARK_MYC_TARGETS_V1":
-        "MYC TARGETS V1"
-}
-
-tratamientos = [
+treatments = [
     "estradiol",
     "calcitriol",
     "calcipotriol"
 ]
+
+hallmark_labels = {
+    "HALLMARK_E2F_TARGETS": "E2F TARGETS",
+    "HALLMARK_G2M_CHECKPOINT": "G2M CHECKPOINT",
+    "HALLMARK_MYC_TARGETS_V1": "MYC TARGETS V1"
+}
 
 treatment_labels = {
     "estradiol": "Estradiol",
@@ -75,545 +120,594 @@ treatment_labels = {
     "calcipotriol": "Calcipotriol"
 }
 
-# ============================================================
-# MATRIZ FULL
-# ============================================================
-
-filas_full = []
-
-for cell in contextos:
-
-    for hallmark in hallmarks:
-
-        fila = full[
-            (full["cell_id"] == cell)
-            &
-            (full["hallmark"] == hallmark)
-        ]
-
-        if len(fila) != 1:
-            raise ValueError(
-                f"Problema en Full con {cell} / {hallmark}"
-            )
-
-        for tratamiento in tratamientos:
-
-            filas_full.append({
-                "cell_id": cell,
-                "hallmark": hallmark,
-                "tratamiento": tratamiento,
-                "score": float(
-                    fila[tratamiento].iloc[0]
-                )
-            })
-
-full_long = pd.DataFrame(filas_full)
-
-# ============================================================
-# MATRIZ LANDMARK
-# ============================================================
-
-mapa_lm_cols = {
+landmark_columns = {
     "estradiol": "estradiol_LM",
     "calcitriol": "calcitriol_LM",
     "calcipotriol": "calcipotriol_LM"
 }
 
-filas_lm = []
-
-for cell in contextos:
-
-    for hallmark in hallmarks:
-
-        fila = lm[
-            (lm["cell_id"] == cell)
-            &
-            (lm["hallmark"] == hallmark)
-        ]
-
-        if len(fila) != 1:
-            raise ValueError(
-                f"Problema en Landmark con {cell} / {hallmark}"
-            )
-
-        for tratamiento in tratamientos:
-
-            col = mapa_lm_cols[tratamiento]
-
-            filas_lm.append({
-                "cell_id": cell,
-                "hallmark": hallmark,
-                "tratamiento": tratamiento,
-                "score": float(
-                    fila[col].iloc[0]
-                )
-            })
-
-lm_long = pd.DataFrame(filas_lm)
 
 # ============================================================
-# AUDITORÍA DE RESÚMENES
+# 3. VALIDATE AND BUILD HEATMAP MATRICES
 # ============================================================
 
-print("\nResumen Full:")
-print(
-    resumen_full.to_string(index=False)
-)
+def build_matrix(data, column_map):
 
-print("\nResumen Landmark:")
-print(
-    resumen_lm.to_string(index=False)
-)
+    required = [
+        "cell_id",
+        "hallmark",
+        *column_map.values()
+    ]
 
-# ============================================================
-# MATRICES PARA HEATMAP
-# ============================================================
+    missing = [
+        col for col in required
+        if col not in data.columns
+    ]
 
-# Filas = contexto × Hallmark
-row_labels = []
-
-for cell in contextos:
-    for hallmark in hallmarks:
-        row_labels.append(
-            f"{cell} | {hallmark_labels[hallmark]}"
+    if missing:
+        raise ValueError(
+            f"Missing columns: {missing}"
         )
 
-def construir_matriz(df_long):
+    matrix = np.empty((12, 3))
+    records = []
 
-    matriz = np.zeros(
-        (
-            len(row_labels),
-            len(tratamientos)
-        )
-    )
+    row = 0
 
-    fila_idx = 0
-
-    for cell in contextos:
+    for cell in contexts:
 
         for hallmark in hallmarks:
 
-            subset = df_long[
-                (df_long["cell_id"] == cell)
+            subset = data.loc[
+                (data["cell_id"] == cell)
                 &
-                (df_long["hallmark"] == hallmark)
+                (data["hallmark"] == hallmark)
             ]
 
-            for j, tratamiento in enumerate(tratamientos):
+            if len(subset) != 1:
 
-                fila = subset[
-                    subset["tratamiento"]
-                    == tratamiento
-                ]
-
-                if len(fila) != 1:
-                    raise ValueError(
-                        f"Problema en matriz: "
-                        f"{cell}, {hallmark}, {tratamiento}"
-                    )
-
-                matriz[
-                    fila_idx,
-                    j
-                ] = float(
-                    fila["score"].iloc[0]
+                raise ValueError(
+                    f"Expected one row for "
+                    f"{cell} / {hallmark}"
                 )
 
-            fila_idx += 1
+            for j, treatment in enumerate(treatments):
 
-    return matriz
+                value = float(
+                    subset[column_map[treatment]].iloc[0]
+                )
 
-matriz_full = construir_matriz(full_long)
-matriz_lm = construir_matriz(lm_long)
+                if not np.isfinite(value):
+                    raise ValueError(
+                        f"Invalid value for "
+                        f"{cell}, {hallmark}, {treatment}"
+                    )
 
-print("\nMatriz Full:")
-print(matriz_full)
+                matrix[row, j] = value
 
-print("\nMatriz Landmark:")
-print(matriz_lm)
+                records.append({
+                    "cell_id": cell,
+                    "hallmark": hallmark,
+                    "tratamiento": treatment,
+                    "score": value
+                })
+
+            row += 1
+
+    return matrix, pd.DataFrame(records)
+
+
+matrix_full, full_long = build_matrix(
+    full,
+    {t: t for t in treatments}
+)
+
+matrix_landmark, landmark_long = build_matrix(
+    landmark,
+    landmark_columns
+)
+
 
 # ============================================================
-# ESCALA COMÚN
+# 4. VALIDATE ORIGINAL SUMMARY DATA
+# ============================================================
+
+fraction_col = "fraccion_hallmarks_negativos_3de3"
+
+def summary_values(data, name):
+
+    required = ["cell_id", fraction_col]
+
+    missing = [
+        c for c in required
+        if c not in data.columns
+    ]
+
+    if missing:
+        raise ValueError(
+            f"Missing columns in {name}: {missing}"
+        )
+
+    if data["cell_id"].duplicated().any():
+        raise ValueError(
+            f"Duplicated cell IDs in {name}"
+        )
+
+    indexed = data.set_index("cell_id")
+
+    if not set(contexts).issubset(indexed.index):
+        raise ValueError(
+            f"Missing contexts in {name}"
+        )
+
+    values = pd.to_numeric(
+        indexed.loc[contexts, fraction_col],
+        errors="raise"
+    ).to_numpy(dtype=float)
+
+    if (
+        not np.isfinite(values).all()
+        or (values < 0).any()
+        or (values > 1).any()
+    ):
+        raise ValueError(
+            f"Invalid fractions in {name}"
+        )
+
+    return values
+
+
+values_full = summary_values(
+    summary_full, "Full"
+)
+
+values_landmark = summary_values(
+    summary_landmark, "Landmark"
+)
+
+
+# ============================================================
+# 5. COMMON COLOUR SCALE
 # ============================================================
 
 max_abs = max(
-    np.abs(matriz_full).max(),
-    np.abs(matriz_lm).max()
+    np.abs(matrix_full).max(),
+    np.abs(matrix_landmark).max()
 )
 
-limite = np.ceil(
-    max_abs * 10
-) / 10
+limit = np.ceil(max_abs * 10) / 10
 
 norm = TwoSlopeNorm(
-    vmin=-limite,
+    vmin=-limit,
     vcenter=0,
-    vmax=limite
+    vmax=limit
 )
 
+cmap = plt.get_cmap("RdBu_r")
+
+
 # ============================================================
-# FIGURA
+# 6. PUBLICATION STYLE
+# ============================================================
+
+plt.rcParams.update({
+    "font.family": "DejaVu Sans",
+    "font.size": 11,
+    "axes.titlesize": 13,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "axes.linewidth": 0.8,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42,
+    "savefig.facecolor": "white"
+})
+
+
+# ============================================================
+# 7. CREATE A4 LANDSCAPE FIGURE
 # ============================================================
 
 fig = plt.figure(
-    figsize=(14.0, 10.5),
-    constrained_layout=True
+    figsize=(29.7 / 2.54, 21 / 2.54),
+    facecolor="white"
 )
 
-gs = fig.add_gridspec(
-    2,
-    2,
-    height_ratios=[1.6, 0.8]
-)
+# Upper heatmaps: leave room for long row labels
+ax1 = fig.add_axes([
+    0.155, 0.445, 0.285, 0.425
+])
 
-ax1 = fig.add_subplot(gs[0, 0])
-ax2 = fig.add_subplot(gs[0, 1])
-ax3 = fig.add_subplot(gs[1, :])
+ax2 = fig.add_axes([
+    0.625, 0.445, 0.285, 0.425
+])
+
+# Shared colour bar
+cax = fig.add_axes([
+    0.935, 0.445, 0.014, 0.425
+])
+
+# Lower summary panel
+ax3 = fig.add_axes([
+    0.135, 0.125, 0.77, 0.215
+])
+
 
 # ============================================================
-# PANEL A — FULL
+# 8. PANEL LETTERS
 # ============================================================
 
-im1 = ax1.imshow(
-    matriz_full,
-    cmap="RdBu_r",
-    norm=norm,
-    aspect="auto"
-)
-
-ax1.set_title(
-    "Full L1000 gene space",
-    fontsize=11
-)
-
-ax1.set_xticks(
-    np.arange(len(tratamientos))
-)
-
-ax1.set_xticklabels(
-    [
-        treatment_labels[t]
-        for t in tratamientos
-    ],
-    fontsize=9
-)
-
-ax1.set_yticks(
-    np.arange(len(row_labels))
-)
-
-ax1.set_yticklabels(
-    row_labels,
-    fontsize=8
-)
-
-ax1.text(
-    -0.20,
-    1.03,
+fig.text(
+    0.025, 0.975,
     "A",
-    transform=ax1.transAxes,
-    fontsize=16,
+    fontsize=18,
     fontweight="bold",
+    ha="left",
     va="top"
 )
 
-for i in range(
-    matriz_full.shape[0]
-):
-
-    for j in range(
-        matriz_full.shape[1]
-    ):
-
-        valor = matriz_full[i, j]
-
-        color_texto = (
-            "white"
-            if abs(valor) > limite * 0.45
-            else "black"
-        )
-
-        ax1.text(
-            j,
-            i,
-            f"{valor:.2f}",
-            ha="center",
-            va="center",
-            fontsize=7.5,
-            color=color_texto
-        )
-
-# ============================================================
-# PANEL B — LANDMARK
-# ============================================================
-
-im2 = ax2.imshow(
-    matriz_lm,
-    cmap="RdBu_r",
-    norm=norm,
-    aspect="auto"
-)
-
-ax2.set_title(
-    "Landmark genes",
-    fontsize=11
-)
-
-ax2.set_xticks(
-    np.arange(len(tratamientos))
-)
-
-ax2.set_xticklabels(
-    [
-        treatment_labels[t]
-        for t in tratamientos
-    ],
-    fontsize=9
-)
-
-ax2.set_yticks(
-    np.arange(len(row_labels))
-)
-
-ax2.set_yticklabels(
-    row_labels,
-    fontsize=8
-)
-
-ax2.text(
-    -0.20,
-    1.03,
+fig.text(
+    0.495, 0.975,
     "B",
-    transform=ax2.transAxes,
-    fontsize=16,
+    fontsize=18,
     fontweight="bold",
+    ha="left",
     va="top"
 )
 
-for i in range(
-    matriz_lm.shape[0]
-):
+fig.text(
+    0.025, 0.385,
+    "C",
+    fontsize=18,
+    fontweight="bold",
+    ha="left",
+    va="top"
+)
 
-    for j in range(
-        matriz_lm.shape[1]
-    ):
-
-        valor = matriz_lm[i, j]
-
-        color_texto = (
-            "white"
-            if abs(valor) > limite * 0.45
-            else "black"
-        )
-
-        ax2.text(
-            j,
-            i,
-            f"{valor:.2f}",
-            ha="center",
-            va="center",
-            fontsize=7.5,
-            color=color_texto
-        )
 
 # ============================================================
-# COLORBAR COMÚN
+# 9. TITLES
+# ============================================================
+
+fig.text(
+    0.2975, 0.925,
+    "Full L1000 gene space",
+    ha="center",
+    va="center",
+    fontsize=14,
+    fontweight="bold"
+)
+
+fig.text(
+    0.7675, 0.925,
+    "Landmark genes",
+    ha="center",
+    va="center",
+    fontsize=14,
+    fontweight="bold"
+)
+
+fig.text(
+    0.52, 0.375,
+    "Context-level convergence of the core programmes",
+    ha="center",
+    va="center",
+    fontsize=13,
+    fontweight="bold"
+)
+
+
+# ============================================================
+# 10. HEATMAPS
+# ============================================================
+
+row_labels = [
+    f"{cell} | {hallmark_labels[hallmark]}"
+    for cell in contexts
+    for hallmark in hallmarks
+]
+
+
+def draw_heatmap(ax, matrix):
+
+    image = ax.imshow(
+        matrix,
+        cmap=cmap,
+        norm=norm,
+        aspect="auto",
+        interpolation="nearest"
+    )
+
+    ax.set_xticks(range(3))
+
+    ax.set_xticklabels(
+        [treatment_labels[t] for t in treatments],
+        fontsize=10.5
+    )
+
+    ax.set_yticks(range(12))
+
+    ax.set_yticklabels(
+        row_labels,
+        fontsize=9.5
+    )
+
+    ax.tick_params(
+        axis="both",
+        length=0,
+        pad=5
+    )
+
+    # White cell boundaries
+    ax.set_xticks(
+        np.arange(-0.5, 3, 1),
+        minor=True
+    )
+
+    ax.set_yticks(
+        np.arange(-0.5, 12, 1),
+        minor=True
+    )
+
+    ax.grid(
+        which="minor",
+        color="white",
+        linewidth=0.9
+    )
+
+    ax.tick_params(
+        which="minor",
+        bottom=False,
+        left=False
+    )
+
+    # Stronger separation between cellular contexts
+    for boundary in [2.5, 5.5, 8.5]:
+
+        ax.axhline(
+            boundary,
+            color="#444444",
+            linewidth=1.2
+        )
+
+    for i in range(12):
+
+        for j in range(3):
+
+            value = matrix[i, j]
+
+            rgba = cmap(norm(value))
+
+            luminance = (
+                0.2126 * rgba[0]
+                + 0.7152 * rgba[1]
+                + 0.0722 * rgba[2]
+            )
+
+            text_colour = (
+                "#111111"
+                if luminance > 0.52
+                else "white"
+            )
+
+            ax.text(
+                j,
+                i,
+                f"{value:.2f}",
+                ha="center",
+                va="center",
+                fontsize=9.3,
+                fontweight="medium",
+                color=text_colour
+            )
+
+    return image
+
+
+im1 = draw_heatmap(
+    ax1,
+    matrix_full
+)
+
+im2 = draw_heatmap(
+    ax2,
+    matrix_landmark
+)
+
+
+# ============================================================
+# 11. COMMON COLOUR BAR
 # ============================================================
 
 cbar = fig.colorbar(
     im2,
-    ax=[ax1, ax2],
-    fraction=0.028,
-    pad=0.03
+    cax=cax
 )
 
 cbar.set_label(
     "Mean Hallmark programme score",
-    fontsize=9
+    fontsize=10.5,
+    labelpad=12
 )
+
+cbar.ax.tick_params(
+    labelsize=9.5
+)
+
 
 # ============================================================
-# PANEL C — RESUMEN DE CONVERGENCIA POR CONTEXTO
+# 12. PANEL C — CONTEXT CONVERGENCE
 # ============================================================
 
-ax3.text(
-    -0.055,
-    1.05,
-    "C",
-    transform=ax3.transAxes,
-    fontsize=16,
-    fontweight="bold",
-    va="top"
-)
-
-res_full = (
-    resumen_full
-    .set_index("cell_id")
-    .loc[contextos]
-)
-
-res_lm = (
-    resumen_lm
-    .set_index("cell_id")
-    .loc[contextos]
-)
-
-x = np.arange(
-    len(contextos)
-)
-
+x = np.arange(len(contexts))
 width = 0.34
-
-val_full = (
-    res_full[
-        "fraccion_hallmarks_negativos_3de3"
-    ].values
-)
-
-val_lm = (
-    res_lm[
-        "fraccion_hallmarks_negativos_3de3"
-    ].values
-)
 
 bars_full = ax3.bar(
     x - width / 2,
-    val_full,
+    values_full,
     width,
-    label="Full"
+    color="#0072B2",
+    edgecolor="black",
+    linewidth=0.5,
+    label="Full",
+    zorder=3
 )
 
-bars_lm = ax3.bar(
+bars_landmark = ax3.bar(
     x + width / 2,
-    val_lm,
+    values_landmark,
     width,
-    label="Landmark"
+    color="#E69F00",
+    edgecolor="black",
+    linewidth=0.5,
+    label="Landmark",
+    zorder=3
 )
 
 ax3.set_xticks(x)
 
 ax3.set_xticklabels(
-    contextos,
-    fontsize=9
-)
-
-ax3.set_ylim(
-    0,
-    1.12
-)
-
-ax3.set_ylabel(
-    "Fraction of core Hallmarks\nnegative in all 3 treatments"
-)
-
-ax3.set_title(
-    "Context-level convergence of the core programmes",
+    contexts,
     fontsize=11
 )
 
-ax3.legend(
-    frameon=False,
-    fontsize=9
+ax3.set_ylim(0, 1.16)
+
+ax3.set_ylabel(
+    "Fraction of core Hallmarks\n"
+    "negative in all 3 treatments",
+    fontsize=10.5
 )
 
-# Etiquetas 0/3, 1/3, 3/3
-for bars, valores in [
-    (bars_full, val_full),
-    (bars_lm, val_lm)
-]:
+ax3.legend(
+    loc="upper left",
+    frameon=False,
+    fontsize=10,
+    ncol=2
+)
 
-    for bar, valor in zip(
-        bars,
-        valores
-    ):
-
-        n = int(
-            round(
-                valor * 3
-            )
-        )
-
-        ax3.text(
-            bar.get_x()
-            + bar.get_width() / 2,
-            bar.get_height()
-            + 0.035,
-            f"{n}/3",
-            ha="center",
-            va="bottom",
-            fontsize=8.5
-        )
+ax3.grid(
+    axis="y",
+    color="#E6E6E6",
+    linewidth=0.6,
+    zorder=0
+)
 
 ax3.spines["top"].set_visible(False)
 ax3.spines["right"].set_visible(False)
 
+
 # ============================================================
-# NOTA
+# 13. FRACTION LABELS
+# ============================================================
+
+for bars, values in [
+    (bars_full, values_full),
+    (bars_landmark, values_landmark)
+]:
+
+    for bar, value in zip(bars, values):
+
+        count = round(value * 3)
+
+        if not np.isclose(
+            value, count / 3,
+            atol=1e-6
+        ):
+            raise ValueError(
+                "Fraction is not a multiple of 1/3."
+            )
+
+        ax3.annotate(
+            f"{count}/3",
+            (
+                bar.get_x()
+                + bar.get_width() / 2,
+                bar.get_height()
+            ),
+            xytext=(0, 5),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            fontweight="bold"
+        )
+
+
+# ============================================================
+# 14. METHODOLOGICAL NOTE
 # ============================================================
 
 fig.text(
-    0.5,
-    -0.025,
-    "Context-level values are descriptive because cell line and experimental block are confounded "
-    "in the primary matched design.",
+    0.52, 0.045,
+    "Context-level values are descriptive because cell line "
+    "and experimental block are confounded in the matched design.",
     ha="center",
-    va="top",
-    fontsize=8.5
+    va="center",
+    fontsize=10,
+    color="#333333"
 )
 
+
 # ============================================================
-# GUARDAR
+# 15. EXPORT — OVERWRITE PREVIOUS FILES
 # ============================================================
 
-fig.savefig(
-    "Figure_5_context_dependence.pdf",
-    bbox_inches="tight"
+OUTPUT.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+pdf_path = (
+    OUTPUT / "Figure_5_context_dependence.pdf"
+)
+
+png_path = (
+    OUTPUT / "Figure_5_context_dependence.png"
+)
+
+csv_path = (
+    OUTPUT / "Figure_5_context_values.csv"
 )
 
 fig.savefig(
-    "Figure_5_context_dependence.png",
+    pdf_path,
+    format="pdf",
+    bbox_inches=None,
+    facecolor="white"
+)
+
+fig.savefig(
+    png_path,
+    format="png",
     dpi=600,
-    bbox_inches="tight"
+    bbox_inches=None,
+    facecolor="white"
 )
 
-# Datos utilizados
-tabla_figura5 = pd.concat(
+audit_table = pd.concat(
     [
         full_long.assign(
             analysis_space="Full"
         ),
-        lm_long.assign(
+        landmark_long.assign(
             analysis_space="Landmark"
         )
     ],
     ignore_index=True
 )
 
-tabla_figura5.to_csv(
-    "Figure_5_context_values.csv",
+audit_table.to_csv(
+    csv_path,
     index=False
 )
 
 plt.close(fig)
 
-# ============================================================
-# FINAL
-# ============================================================
-
-print("\n" + "=" * 90)
-print("ARCHIVOS GENERADOS")
-print("=" * 90)
-
-print(
-    "- Figure_5_context_dependence.pdf"
-)
-
-print(
-    "- Figure_5_context_dependence.png"
-)
-
-print(
-    "- Figure_5_context_values.csv"
-)
-
-print("\nFIGURA 5 COMPLETADA")
+print("\n" + "=" * 75)
+print("FIGURE 5 GENERATED SUCCESSFULLY")
+print("=" * 75)
+print("Size: A4 landscape — 29.7 x 21 cm")
+print("PDF:", pdf_path)
+print("PNG:", png_path)
+print("Audit CSV:", csv_path)

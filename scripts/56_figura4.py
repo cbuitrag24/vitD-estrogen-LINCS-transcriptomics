@@ -1,32 +1,73 @@
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import TwoSlopeNorm
+
 from pathlib import Path
-
-print("=" * 90)
-print("FIGURA 4 — CONVERGENCIA FUNCIONAL HALLMARK")
-print("=" * 90)
+from matplotlib.colors import TwoSlopeNorm
 
 # ============================================================
-# ARCHIVO PRINCIPAL
+# FIGURE 4 — HALLMARK CORE CONVERGENCE
+# A4 landscape: 29.7 x 21 cm
+# Vector PDF + PNG 600 dpi
 # ============================================================
 
-archivo = Path("GSEA_FULL_vs_LANDMARK_comparacion.csv")
+SOURCE = Path(
+    r"C:\Users\petri\LINCS_Estradiol_VitaminaD"
+)
 
-if not archivo.exists():
-    raise FileNotFoundError(
-        "No se encontró GSEA_FULL_vs_LANDMARK_comparacion.csv"
-    )
+REPO = Path(
+    r"C:\Users\petri\vitD-estrogen-LINCS-transcriptomics"
+)
 
-df = pd.read_csv(archivo)
+OUTPUT = REPO / "results" / "figures"
 
-print("\nArchivo encontrado.")
-print("Filas:", len(df))
-print("Columnas:", list(df.columns))
+FILENAME = "GSEA_FULL_vs_LANDMARK_comparacion.csv"
+
+print("=" * 75)
+print("FIGURE 4 — HALLMARK CORE CONVERGENCE")
+print("=" * 75)
+
 
 # ============================================================
-# HALLMARKS CENTRALES
+# 1. LOCATE ORIGINAL RESULTS
+# ============================================================
+
+def locate_file(filename):
+    candidates = []
+
+    for folder in (SOURCE, REPO):
+        if folder.is_dir():
+            candidates.extend(
+                p for p in folder.rglob(filename)
+                if p.is_file()
+            )
+
+    unique = {
+        str(p.resolve()).lower(): p
+        for p in candidates
+    }
+
+    if len(unique) != 1:
+        raise FileNotFoundError(
+            f"Expected one copy of {filename}; "
+            f"found {len(unique)}:\n"
+            + "\n".join(str(p) for p in unique.values())
+        )
+
+    return next(iter(unique.values()))
+
+
+data_path = locate_file(FILENAME)
+print("Source:", data_path)
+
+df = pd.read_csv(data_path)
+
+
+# ============================================================
+# 2. SELECT ORIGINAL HALLMARK RESULTS
 # ============================================================
 
 hallmarks = [
@@ -35,130 +76,116 @@ hallmarks = [
     "HALLMARK_MYC_TARGETS_V1"
 ]
 
-tratamientos = [
+treatments = [
     "estradiol",
     "calcitriol",
     "calcipotriol"
 ]
 
-# Etiquetas para publicación
 hallmark_labels = {
-    "HALLMARK_E2F_TARGETS":
-        "E2F TARGETS",
-
-    "HALLMARK_G2M_CHECKPOINT":
-        "G2M CHECKPOINT",
-
-    "HALLMARK_MYC_TARGETS_V1":
-        "MYC TARGETS V1"
+    "HALLMARK_E2F_TARGETS": "E2F TARGETS",
+    "HALLMARK_G2M_CHECKPOINT": "G2M CHECKPOINT",
+    "HALLMARK_MYC_TARGETS_V1": "MYC TARGETS V1"
 }
 
 treatment_labels = {
-    "estradiol":
-        "Estradiol",
-
-    "calcitriol":
-        "Calcitriol",
-
-    "calcipotriol":
-        "Calcipotriol"
+    "estradiol": "Estradiol",
+    "calcitriol": "Calcitriol",
+    "calcipotriol": "Calcipotriol"
 }
 
-# ============================================================
-# FILTRAR DATOS
-# ============================================================
+required = [
+    "tratamiento",
+    "hallmark",
+    "NES_full",
+    "q_full",
+    "NES_landmark",
+    "q_landmark",
+    "robustez"
+]
 
-core = df[
+missing = [c for c in required if c not in df.columns]
+
+if missing:
+    raise ValueError(f"Missing columns: {missing}")
+
+core = df.loc[
     df["hallmark"].isin(hallmarks)
     &
-    df["tratamiento"].isin(tratamientos)
+    df["tratamiento"].isin(treatments)
 ].copy()
 
-print("\nDatos seleccionados para Figura 4:")
-print(
-    core[
-        [
-            "tratamiento",
-            "hallmark",
-            "NES_full",
-            "q_full",
-            "NES_landmark",
-            "q_landmark",
-            "robustez"
-        ]
-    ].sort_values(
-        [
-            "hallmark",
-            "tratamiento"
-        ]
-    ).to_string(index=False)
-)
+expected = {
+    (hallmark, treatment)
+    for hallmark in hallmarks
+    for treatment in treatments
+}
 
-# Deben ser exactamente 3 Hallmarks × 3 tratamientos
-if len(core) != 9:
+actual = list(zip(
+    core["hallmark"],
+    core["tratamiento"]
+))
+
+if (
+    len(actual) != 9
+    or len(set(actual)) != 9
+    or set(actual) != expected
+):
     raise ValueError(
-        f"Se esperaban 9 filas y se encontraron {len(core)}."
+        "Expected exactly nine unique Hallmark-treatment combinations."
     )
 
+numeric = [
+    "NES_full",
+    "q_full",
+    "NES_landmark",
+    "q_landmark"
+]
+
+for col in numeric:
+    core[col] = pd.to_numeric(
+        core[col], errors="raise"
+    )
+
+if not np.isfinite(core[numeric].to_numpy()).all():
+    raise ValueError("Non-finite NES or q values.")
+
+if (
+    (core[["q_full", "q_landmark"]] < 0).any().any()
+    or
+    (core[["q_full", "q_landmark"]] > 1).any().any()
+):
+    raise ValueError("Adjusted P values outside [0, 1].")
+
+
 # ============================================================
-# CONSTRUIR MATRICES
+# 3. CONSTRUCT MATRICES
 # ============================================================
 
-nes_full = np.zeros((3, 3))
-q_full = np.ones((3, 3))
+nes_full = np.empty((3, 3))
+nes_landmark = np.empty((3, 3))
 
-nes_landmark = np.zeros((3, 3))
-q_landmark = np.ones((3, 3))
+q_full = np.empty((3, 3))
+q_landmark = np.empty((3, 3))
 
 for i, hallmark in enumerate(hallmarks):
+    for j, treatment in enumerate(treatments):
 
-    for j, tratamiento in enumerate(tratamientos):
-
-        fila = core[
+        row = core.loc[
             (core["hallmark"] == hallmark)
             &
-            (core["tratamiento"] == tratamiento)
-        ]
+            (core["tratamiento"] == treatment)
+        ].iloc[0]
 
-        if len(fila) != 1:
-            raise ValueError(
-                f"Problema con {hallmark} / {tratamiento}"
-            )
+        nes_full[i, j] = row["NES_full"]
+        nes_landmark[i, j] = row["NES_landmark"]
 
-        nes_full[i, j] = float(
-            fila["NES_full"].iloc[0]
-        )
+        q_full[i, j] = row["q_full"]
+        q_landmark[i, j] = row["q_landmark"]
 
-        q_full[i, j] = float(
-            fila["q_full"].iloc[0]
-        )
-
-        nes_landmark[i, j] = float(
-            fila["NES_landmark"].iloc[0]
-        )
-
-        q_landmark[i, j] = float(
-            fila["q_landmark"].iloc[0]
-        )
 
 # ============================================================
-# AUDITORÍA
-# ============================================================
-
-print("\nMatriz NES Full:")
-print(nes_full)
-
-print("\nMatriz NES Landmark:")
-print(nes_landmark)
-
-print("\nTodos los q Full < 0.05:",
-      np.all(q_full < 0.05))
-
-print("Todos los q Landmark < 0.05:",
-      np.all(q_landmark < 0.05))
-
-# ============================================================
-# ESCALA COMÚN PARA LOS DOS HEATMAPS
+# 4. COMMON COLOUR SCALE
 # ============================================================
 
 max_abs = max(
@@ -166,261 +193,282 @@ max_abs = max(
     np.abs(nes_landmark).max()
 )
 
-limite = np.ceil(
-    max_abs * 10
-) / 10
+limit = np.ceil(max_abs * 10) / 10
 
 norm = TwoSlopeNorm(
-    vmin=-limite,
+    vmin=-limit,
     vcenter=0,
-    vmax=limite
+    vmax=limit
 )
 
+cmap = plt.get_cmap("RdBu_r")
+
+
 # ============================================================
-# FUNCIÓN PARA TEXTO DE SIGNIFICANCIA
+# 5. PUBLICATION STYLE
 # ============================================================
 
-def estrellas(q):
+plt.rcParams.update({
+    "font.family": "DejaVu Sans",
+    "font.size": 12,
+    "axes.titlesize": 15,
+    "axes.labelsize": 12,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "axes.linewidth": 0.8,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42
+})
 
+
+# ============================================================
+# 6. A4 LANDSCAPE FIGURE
+# ============================================================
+
+fig = plt.figure(
+    figsize=(29.7 / 2.54, 21 / 2.54),
+    facecolor="white"
+)
+
+# Large panels with room for labels and colour bar
+ax1 = fig.add_axes([0.105, 0.23, 0.34, 0.58])
+ax2 = fig.add_axes([0.565, 0.23, 0.34, 0.58])
+
+cax = fig.add_axes([0.93, 0.23, 0.018, 0.58])
+
+# Panel letters, outside heatmaps
+fig.text(
+    0.025, 0.96, "A",
+    fontsize=20,
+    fontweight="bold",
+    ha="left",
+    va="top"
+)
+
+fig.text(
+    0.49, 0.96, "B",
+    fontsize=20,
+    fontweight="bold",
+    ha="left",
+    va="top"
+)
+
+# Titles in separate row
+fig.text(
+    0.275, 0.895,
+    "Full L1000 gene space",
+    fontsize=15,
+    fontweight="bold",
+    ha="center",
+    va="center"
+)
+
+fig.text(
+    0.735, 0.895,
+    "Landmark genes",
+    fontsize=15,
+    fontweight="bold",
+    ha="center",
+    va="center"
+)
+
+
+# ============================================================
+# 7. SIGNIFICANCE LABELS
+# ============================================================
+
+def stars(q):
     if q < 0.001:
         return "***"
-
-    elif q < 0.01:
+    if q < 0.01:
         return "**"
-
-    elif q < 0.05:
+    if q < 0.05:
         return "*"
-
     return ""
 
-# ============================================================
-# FIGURA
-# ============================================================
-
-fig, axes = plt.subplots(
-    1,
-    2,
-    figsize=(10.8, 5.2),
-    constrained_layout=True
-)
 
 # ============================================================
-# PANEL A — FULL
+# 8. HEATMAP FUNCTION
 # ============================================================
 
-ax1 = axes[0]
+def plot_heatmap(ax, nes, q_values):
 
-im1 = ax1.imshow(
+    image = ax.imshow(
+        nes,
+        cmap=cmap,
+        norm=norm,
+        aspect="auto",
+        interpolation="nearest"
+    )
+
+    ax.set_xticks(range(3))
+    ax.set_xticklabels(
+        [treatment_labels[t] for t in treatments],
+        fontsize=12
+    )
+
+    ax.set_yticks(range(3))
+    ax.set_yticklabels(
+        [hallmark_labels[h] for h in hallmarks],
+        fontsize=12
+    )
+
+    ax.tick_params(
+        axis="both",
+        length=0,
+        pad=10
+    )
+
+    # Thin white boundaries between cells
+    ax.set_xticks(
+        np.arange(-0.5, 3, 1),
+        minor=True
+    )
+
+    ax.set_yticks(
+        np.arange(-0.5, 3, 1),
+        minor=True
+    )
+
+    ax.grid(
+        which="minor",
+        color="white",
+        linewidth=2
+    )
+
+    ax.tick_params(
+        which="minor",
+        bottom=False,
+        left=False
+    )
+
+    for i in range(3):
+        for j in range(3):
+
+            value = nes[i, j]
+            q = q_values[i, j]
+
+            rgba = cmap(norm(value))
+
+            luminance = (
+                0.2126 * rgba[0]
+                + 0.7152 * rgba[1]
+                + 0.0722 * rgba[2]
+            )
+
+            text_colour = (
+                "#111111"
+                if luminance > 0.52
+                else "white"
+            )
+
+            ax.text(
+                j,
+                i,
+                f"NES {value:.2f}{stars(q)}",
+                ha="center",
+                va="center",
+                fontsize=12,
+                fontweight="bold",
+                color=text_colour
+            )
+
+    return image
+
+
+# ============================================================
+# 9. PLOT BOTH PANELS
+# ============================================================
+
+im1 = plot_heatmap(
+    ax1,
     nes_full,
-    cmap="RdBu_r",
-    norm=norm,
-    aspect="auto"
+    q_full
 )
 
-ax1.set_title(
-    "Full L1000 gene space",
-    fontsize=11
-)
-
-ax1.set_xticks(
-    np.arange(len(tratamientos))
-)
-
-ax1.set_xticklabels(
-    [
-        treatment_labels[x]
-        for x in tratamientos
-    ],
-    fontsize=9
-)
-
-ax1.set_yticks(
-    np.arange(len(hallmarks))
-)
-
-ax1.set_yticklabels(
-    [
-        hallmark_labels[x]
-        for x in hallmarks
-    ],
-    fontsize=9
-)
-
-ax1.text(
-    -0.16,
-    1.07,
-    "A",
-    transform=ax1.transAxes,
-    fontsize=16,
-    fontweight="bold",
-    va="top"
-)
-
-# Texto dentro de las celdas
-for i in range(3):
-
-    for j in range(3):
-
-        valor = nes_full[i, j]
-        q = q_full[i, j]
-
-        texto = (
-    f"NES {valor:.2f}"
-    f"{estrellas(q)}"
-        )
-
-        color_texto = (
-            "white"
-            if abs(valor) > limite * 0.48
-            else "black"
-        )
-
-        ax1.text(
-            j,
-            i,
-            texto,
-            ha="center",
-            va="center",
-            fontsize=8.5,
-            color=color_texto,
-            fontweight="bold"
-            if q < 0.05
-            else "normal"
-        )
-
-# ============================================================
-# PANEL B — LANDMARK
-# ============================================================
-
-ax2 = axes[1]
-
-im2 = ax2.imshow(
+im2 = plot_heatmap(
+    ax2,
     nes_landmark,
-    cmap="RdBu_r",
-    norm=norm,
-    aspect="auto"
+    q_landmark
 )
 
-ax2.set_title(
-    "Landmark genes",
-    fontsize=11
-)
-
-ax2.set_xticks(
-    np.arange(len(tratamientos))
-)
-
-ax2.set_xticklabels(
-    [
-        treatment_labels[x]
-        for x in tratamientos
-    ],
-    fontsize=9
-)
-
-ax2.set_yticks(
-    np.arange(len(hallmarks))
-)
-
-ax2.set_yticklabels(
-    [
-        hallmark_labels[x]
-        for x in hallmarks
-    ],
-    fontsize=9
-)
-
-ax2.text(
-    -0.16,
-    1.07,
-    "B",
-    transform=ax2.transAxes,
-    fontsize=16,
-    fontweight="bold",
-    va="top"
-)
-
-for i in range(3):
-
-    for j in range(3):
-
-        valor = nes_landmark[i, j]
-        q = q_landmark[i, j]
-
-        texto = (
-    f"NES {valor:.2f}"
-    f"{estrellas(q)}"
-        )
-
-        color_texto = (
-            "white"
-            if abs(valor) > limite * 0.48
-            else "black"
-        )
-
-        ax2.text(
-            j,
-            i,
-            texto,
-            ha="center",
-            va="center",
-            fontsize=8.5,
-            color=color_texto,
-            fontweight="bold"
-            if q < 0.05
-            else "normal"
-        )
 
 # ============================================================
-# COLORBAR COMÚN
+# 10. COMMON COLOUR BAR
 # ============================================================
 
 cbar = fig.colorbar(
     im2,
-    ax=axes,
-    fraction=0.035,
-    pad=0.04
+    cax=cax
 )
 
 cbar.set_label(
     "Normalised enrichment score (NES)",
-    fontsize=9
+    fontsize=12,
+    labelpad=13
 )
 
+cbar.ax.tick_params(
+    labelsize=11
+)
+
+
 # ============================================================
-# NOTA ESTADÍSTICA
+# 11. STATISTICAL NOTE
 # ============================================================
 
 fig.text(
-    0.5,
-    -0.025,
+    0.50,
+    0.095,
     "Negative NES indicates negative enrichment. "
-    "* BH-adjusted empirical P < 0.05; ** P < 0.01; *** P < 0.001.",
+    "* BH-adjusted empirical P < 0.05; "
+    "** P < 0.01; "
+    "*** P < 0.001.",
     ha="center",
-    va="top",
-    fontsize=8.5
+    va="center",
+    fontsize=11,
+    color="#333333"
 )
 
+
 # ============================================================
-# GUARDAR FIGURA
+# 12. EXPORT — OVERWRITE PREVIOUS FILES
 # ============================================================
 
+OUTPUT.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+pdf_path = (
+    OUTPUT / "Figure_4_Hallmark_core_convergence.pdf"
+)
+
+png_path = (
+    OUTPUT / "Figure_4_Hallmark_core_convergence.png"
+)
+
+csv_path = (
+    OUTPUT / "Figure_4_Hallmark_core_values.csv"
+)
+
+# Preserve exact A4 size
 fig.savefig(
-    "Figure_4_Hallmark_core_convergence.pdf",
-    bbox_inches="tight"
+    pdf_path,
+    format="pdf",
+    bbox_inches=None,
+    facecolor="white"
 )
 
 fig.savefig(
-    "Figure_4_Hallmark_core_convergence.png",
+    png_path,
+    format="png",
     dpi=600,
-    bbox_inches="tight"
+    bbox_inches=None,
+    facecolor="white"
 )
 
-# ============================================================
-# GUARDAR DATOS EXACTOS UTILIZADOS
-# ============================================================
-
-tabla_figura4 = core[
+audit_table = core[
     [
         "tratamiento",
         "hallmark",
@@ -432,31 +480,15 @@ tabla_figura4 = core[
     ]
 ].copy()
 
-tabla_figura4.to_csv(
-    "Figure_4_Hallmark_core_values.csv",
+audit_table.to_csv(
+    csv_path,
     index=False
 )
 
 plt.close(fig)
 
-# ============================================================
-# FINAL
-# ============================================================
-
-print("\n" + "=" * 90)
-print("ARCHIVOS GENERADOS")
-print("=" * 90)
-
-print(
-    "- Figure_4_Hallmark_core_convergence.pdf"
-)
-
-print(
-    "- Figure_4_Hallmark_core_convergence.png"
-)
-
-print(
-    "- Figure_4_Hallmark_core_values.csv"
-)
-
-print("\nFIGURA 4 COMPLETADA")
+print("\nFIGURE 4 GENERATED")
+print("Size: A4 landscape — 29.7 x 21 cm")
+print("PDF:", pdf_path)
+print("PNG:", png_path)
+print("Audit CSV:", csv_path)

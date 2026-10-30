@@ -1,323 +1,296 @@
+
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
 from pathlib import Path
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+from matplotlib.patches import FancyBboxPatch
+from matplotlib.lines import Line2D
 
 # ============================================================
-# FIGURA 1
-# Study design and global transcriptional structure
+# FIGURE 1 — FINAL LAYOUT REVISION
+# Size: 14.5 x 9 cm
+# PDF vector + PNG 600 dpi
 # ============================================================
 
-print("=" * 80)
-print("FIGURA 1 — DISEÑO DEL ESTUDIO Y PCA")
-print("=" * 80)
+SOURCE = Path(
+    r"C:\Users\petri\LINCS_Estradiol_VitaminaD"
+)
 
-# ------------------------------------------------------------
-# 1. Localizar archivos del análisis primario
-# ------------------------------------------------------------
+REPO = Path(
+    r"C:\Users\petri\vitD-estrogen-LINCS-transcriptomics"
+)
 
-archivo_npz = Path("dataset_primario_expresion_12x12328.npz")
+OUTPUT = REPO / "results" / "figures"
 
-if not archivo_npz.exists():
-    raise FileNotFoundError(
-        "No se encontró dataset_primario_expresion_12x12328.npz"
-    )
+NPZ = SOURCE / "dataset_primario_expresion_12x12328.npz"
 
-# Buscar automáticamente un archivo de metadatos primarios
-candidatos_meta = [
-    Path("dataset_primario_metadata.csv"),
-    Path("metadata_primario.csv"),
-    Path("diseno_primario.csv"),
-    Path("firmas_primarias.csv"),
+META_NAMES = [
+    "dataset_primario_metadata.csv",
+    "metadata_primario.csv",
+    "diseno_primario.csv",
+    "firmas_primarias.csv",
 ]
 
-archivo_meta = None
+# ------------------------------------------------------------
+# 1. Load original data
+# ------------------------------------------------------------
 
-for candidato in candidatos_meta:
-    if candidato.exists():
-        archivo_meta = candidato
-        break
+if not NPZ.is_file():
+    raise FileNotFoundError(f"Missing file: {NPZ}")
 
-if archivo_meta is None:
-    # Si el nombre es diferente, buscar CSV candidatos
-    candidatos = list(Path(".").glob("*.csv"))
+meta_path = next(
+    (
+        SOURCE / name
+        for name in META_NAMES
+        if (SOURCE / name).is_file()
+    ),
+    None
+)
 
-    posibles = [
-        p for p in candidatos
-        if (
-            "primar" in p.name.lower()
-            or "firma" in p.name.lower()
-        )
-    ]
-
-    print("\nNo pude identificar automáticamente "
-          "el archivo de metadatos primarios.")
-    print("CSV candidatos encontrados:")
-
-    for p in posibles:
-        print(" -", p.name)
-
+if meta_path is None:
     raise FileNotFoundError(
-        "Necesitamos identificar el CSV de metadatos "
-        "correspondiente a las 12 firmas primarias."
+        "Primary metadata CSV not found in source folder."
     )
 
-print("\nMatriz primaria:", archivo_npz)
-print("Metadatos:", archivo_meta)
+with np.load(NPZ) as archive:
+    X = archive["expresion"]
 
-# ------------------------------------------------------------
-# 2. Cargar matriz
-# ------------------------------------------------------------
-
-datos = np.load(archivo_npz)
-
-if "expresion" not in datos.files:
-    raise KeyError(
-        "El NPZ no contiene la clave 'expresion'."
-    )
-
-X = datos["expresion"]
-
-print("Dimensión de expresión:", X.shape)
+meta = pd.read_csv(meta_path)
 
 if X.shape != (12, 12328):
-    raise ValueError(
-        f"Se esperaba una matriz (12, 12328), "
-        f"pero se obtuvo {X.shape}."
-    )
-
-# ------------------------------------------------------------
-# 3. Cargar metadatos
-# ------------------------------------------------------------
-
-meta = pd.read_csv(archivo_meta)
-
-print("Filas de metadatos:", len(meta))
-print("Columnas:", list(meta.columns))
+    raise ValueError(f"Unexpected matrix shape: {X.shape}")
 
 if len(meta) != 12:
-    raise ValueError(
-        "El archivo de metadatos identificado no tiene 12 filas."
-    )
+    raise ValueError("Metadata must contain 12 rows")
 
-# Identificar columnas
-def buscar_columna(opciones):
-    for opcion in opciones:
+if not np.isfinite(X).all():
+    raise ValueError("Expression matrix has invalid values")
+
+def find_column(names):
+    for name in names:
         for col in meta.columns:
-            if col.lower() == opcion.lower():
+            if col.lower() == name.lower():
                 return col
     return None
 
-col_cell = buscar_columna(
+cell_col = find_column(
     ["cell_id", "cell", "cell_line", "celula"]
 )
 
-col_trat = buscar_columna(
+treat_col = find_column(
     ["pert_iname", "treatment", "tratamiento", "compound"]
 )
 
-if col_cell is None or col_trat is None:
-    raise ValueError(
-        "No pude identificar las columnas de célula y tratamiento."
-    )
-
-print("\nColumna célula:", col_cell)
-print("Columna tratamiento:", col_trat)
-
-print("\nDiseño detectado:")
-print(
-    meta[[col_cell, col_trat]]
-    .to_string(index=False)
-)
+if cell_col is None or treat_col is None:
+    raise ValueError("Missing cell or treatment column")
 
 # ------------------------------------------------------------
-# 4. PCA
-# ------------------------------------------------------------
-#
-# NO estandarizamos genes individualmente.
-# Los valores MODZ ya representan respuestas diferenciales
-# comparables y queremos reproducir la PCA realizada previamente.
+# 2. PCA — original analytical method
 # ------------------------------------------------------------
 
 pca = PCA(n_components=2)
-
 coords = pca.fit_transform(X)
+variance = pca.explained_variance_ratio_ * 100
 
-varianza = pca.explained_variance_ratio_ * 100
+print(f"PC1 = {variance[0]:.2f}%")
+print(f"PC2 = {variance[1]:.2f}%")
 
-print("\nVarianza explicada:")
-print(f"PC1 = {varianza[0]:.2f}%")
-print(f"PC2 = {varianza[1]:.2f}%")
+if (
+    abs(variance[0] - 33.94) >= 0.15
+    or abs(variance[1] - 15.23) >= 0.15
+):
+    raise ValueError(
+        "PCA variance differs from manuscript values. "
+        "No figure will be overwritten."
+    )
 
-pca_df = pd.DataFrame({
-    "PC1": coords[:, 0],
-    "PC2": coords[:, 1],
-    "cell_id": meta[col_cell].astype(str),
-    "treatment": meta[col_trat].astype(str)
-})
-
-# ------------------------------------------------------------
-# 5. Normalizar nombres para presentación
-# ------------------------------------------------------------
-
-def nombre_tratamiento(x):
-    s = str(x).lower()
-
+def treatment_name(value):
+    s = str(value).lower()
     if "estradiol" in s:
         return "Estradiol"
-
     if "calcipotriol" in s:
         return "Calcipotriol"
-
     if "calcitriol" in s:
         return "Calcitriol"
+    return str(value)
 
-    return str(x)
+df = pd.DataFrame({
+    "PC1": coords[:, 0],
+    "PC2": coords[:, 1],
+    "cell_id": meta[cell_col].astype(str).str.strip(),
+    "treatment": meta[treat_col].astype(str),
+})
 
-pca_df["treatment_label"] = (
-    pca_df["treatment"]
-    .apply(nombre_tratamiento)
+df["treatment_label"] = df["treatment"].map(
+    treatment_name
 )
 
+cell_numbers = {
+    "A549": 1,
+    "HA1E": 2,
+    "PC3": 3,
+    "VCAP": 4,
+}
+
+df["cell_number"] = (
+    df["cell_id"].str.upper().map(cell_numbers)
+)
+
+if df["cell_number"].isna().any():
+    raise ValueError(
+        "Unexpected cell-line name in metadata"
+    )
+
+if set(df["treatment_label"]) != {
+    "Estradiol", "Calcitriol", "Calcipotriol"
+}:
+    raise ValueError("Unexpected treatments")
+
+if not (
+    df["treatment_label"].value_counts() == 4
+).all():
+    raise ValueError(
+        "Expected four samples per treatment"
+    )
+
+if not (
+    df.groupby(["treatment_label", "cell_number"])
+    .size()
+    .eq(1)
+    .all()
+    and len(df.groupby(
+        ["treatment_label", "cell_number"]
+    )) == 12
+):
+    raise ValueError(
+        "Expected one sample per cell/treatment combination"
+    )
+
 # ------------------------------------------------------------
-# 6. Crear Figura 1
+# 3. Figure setup
 # ------------------------------------------------------------
 
+plt.rcParams.update({
+    "font.family": "DejaVu Sans",
+    "font.size": 8.5,
+    "axes.labelsize": 9,
+    "axes.titlesize": 9.5,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42,
+    "axes.linewidth": 0.7,
+})
+
 fig = plt.figure(
-    figsize=(12, 5.5),
-    constrained_layout=True
+    figsize=(14.5 / 2.54, 9 / 2.54),
+    facecolor="white"
 )
 
 gs = fig.add_gridspec(
-    1,
-    2,
-    width_ratios=[0.9, 1.25]
+    1, 2,
+    width_ratios=[1.05, 1.45],
+    left=0.055,
+    right=0.96,
+    top=0.78,
+    bottom=0.30,
+    wspace=0.38
 )
 
 # ============================================================
-# PANEL A — Diseño
+# PANEL A
 # ============================================================
 
 ax1 = fig.add_subplot(gs[0, 0])
+ax1.set_xlim(0, 1)
+ax1.set_ylim(0, 1)
 ax1.axis("off")
 
 ax1.text(
-    0.02,
-    0.97,
-    "A",
+    0.00, 1.37, "A",
     transform=ax1.transAxes,
-    fontsize=16,
+    fontsize=12,
     fontweight="bold",
     va="top"
 )
 
 ax1.text(
-    0.50,
-    0.92,
-    "Matched LINCS L1000 study design",
+    0.50, 1.28,
+    "Matched LINCS L1000\nstudy design",
+    transform=ax1.transAxes,
     ha="center",
-    va="center",
-    fontsize=12,
+    va="top",
+    fontsize=9.4,
     fontweight="bold"
 )
 
-# Caja 1: selección experimental
-ax1.text(
-    0.50,
-    0.78,
-   "LINCS L1000 perturbational signatures\n10 µM • 24 h",
-    ha="center",
-    va="center",
-    fontsize=10,
-    bbox=dict(
-        boxstyle="round,pad=0.45",
-        fill=False,
-        linewidth=1
-    )
-)
+def box(y, text):
+    width = 0.98
+    height = 0.16
 
-# Flecha
-ax1.annotate(
-    "",
-    xy=(0.50, 0.64),
-    xytext=(0.50, 0.70),
-    arrowprops=dict(
-        arrowstyle="->",
-        linewidth=1
+    patch = FancyBboxPatch(
+        (0.01, y - height / 2),
+        width,
+        height,
+        boxstyle="round,pad=0.008,rounding_size=0.02",
+        transform=ax1.transAxes,
+        facecolor="#F7F8FA",
+        edgecolor="#555555",
+        linewidth=0.75,
+        clip_on=False
     )
-)
+    ax1.add_patch(patch)
 
-# Caja 2: contextos celulares
-ax1.text(
-    0.50,
-    0.56,
-    "4 matched experimental blocks\nA549 • HA1E • PC3 • VCAP",
-    ha="center",
-    va="center",
-    fontsize=10,
-    bbox=dict(
-        boxstyle="round,pad=0.45",
-        fill=False,
-        linewidth=1
+    ax1.text(
+        0.5, y, text,
+        transform=ax1.transAxes,
+        ha="center",
+        va="center",
+        fontsize=7.3,
+        linespacing=1.18
     )
-)
 
-# Flecha
-ax1.annotate(
-    "",
-    xy=(0.50, 0.42),
-    xytext=(0.50, 0.48),
-    arrowprops=dict(
-        arrowstyle="->",
-        linewidth=1
+def arrow(y1, y2):
+    ax1.annotate(
+        "",
+        xy=(0.5, y2),
+        xytext=(0.5, y1),
+        xycoords="axes fraction",
+        textcoords="axes fraction",
+        arrowprops=dict(
+            arrowstyle="-|>",
+            color="#555555",
+            lw=0.85,
+            mutation_scale=9
+        )
     )
-)
 
-# Caja 3: tratamientos
-ax1.text(
-    0.50,
-    0.34,
-    "Estradiol  |  Calcitriol  |  Calcipotriol",
-    ha="center",
-    va="center",
-    fontsize=10,
-    bbox=dict(
-        boxstyle="round,pad=0.45",
-        fill=False,
-        linewidth=1
-    )
+box(
+    0.87,
+    "LINCS L1000 signatures\n10 µM · 24 h"
 )
+arrow(0.78, 0.68)
 
-# Flecha
-ax1.annotate(
-    "",
-    xy=(0.50, 0.20),
-    xytext=(0.50, 0.26),
-    arrowprops=dict(
-        arrowstyle="->",
-        linewidth=1
-    )
+box(
+    0.59,
+    "4 matched experimental blocks\nA549 · HA1E · PC3 · VCAP"
 )
+arrow(0.50, 0.40)
 
-# Caja 4: salida analítica
-ax1.text(
-    0.50,
-    0.11,
-    "12 Level 5 MODZ signatures\n4 blocks × 3 treatments",
-    ha="center",
-    va="center",
-    fontsize=10,
-    bbox=dict(
-        boxstyle="round,pad=0.45",
-        fill=False,
-        linewidth=1
-    )
+box(
+    0.31,
+    "Estradiol · Calcitriol\nCalcipotriol"
 )
+arrow(0.22, 0.12)
 
-ax1.set_xlim(0, 1)
-ax1.set_ylim(0, 1)
+box(
+    0.03,
+    "12 Level 5 MODZ signatures\n4 blocks × 3 treatments"
+)
 
 # ============================================================
 # PANEL B — PCA
@@ -326,114 +299,177 @@ ax1.set_ylim(0, 1)
 ax2 = fig.add_subplot(gs[0, 1])
 
 ax2.text(
-    -0.10,
-    1.04,
-    "B",
+    -0.12, 1.37, "B",
     transform=ax2.transAxes,
-    fontsize=16,
+    fontsize=12,
     fontweight="bold",
     va="top"
 )
 
-trat_unicos = [
-    "Estradiol",
-    "Calcitriol",
-    "Calcipotriol"
-]
+ax2.text(
+    0.5, 1.28,
+    "Global transcriptional\nstructure",
+    transform=ax2.transAxes,
+    ha="center",
+    va="top",
+    fontsize=9.4,
+    fontweight="bold"
+)
 
-markers = {
-    "Estradiol": "o",
-    "Calcitriol": "s",
-    "Calcipotriol": "^"
+styles = {
+    "Estradiol": ("o", "#0072B2"),
+    "Calcitriol": ("s", "#E69F00"),
+    "Calcipotriol": ("^", "#009E73"),
 }
 
-for tratamiento in trat_unicos:
+# Use treatment-specific marker and colour.
+# Numbers 1–4 identify cell lines.
 
-    temp = pca_df[
-        pca_df["treatment_label"] == tratamiento
+for treatment, (marker, color) in styles.items():
+
+    subset = df[
+        df["treatment_label"] == treatment
     ]
 
     ax2.scatter(
-        temp["PC1"],
-        temp["PC2"],
-        marker=markers[tratamiento],
-        s=70,
-        label=tratamiento,
+        subset["PC1"],
+        subset["PC2"],
+        s=110,
+        marker=marker,
+        c=color,
         edgecolors="black",
-        linewidths=0.6
+        linewidths=0.6,
+        zorder=3
     )
 
-    for _, fila in temp.iterrows():
-
-        ax2.annotate(
-            fila["cell_id"],
-            (
-                fila["PC1"],
-                fila["PC2"]
-            ),
-            xytext=(5, 5),
-            textcoords="offset points",
-            fontsize=8
+    # Each number is drawn inside its corresponding symbol.
+    for _, row in subset.iterrows():
+        ax2.text(
+            row["PC1"],
+            row["PC2"],
+            str(int(row["cell_number"])),
+            fontsize=6.2,
+            fontweight="bold",
+            color="black",
+            ha="center",
+            va="center",
+            zorder=5
         )
 
 ax2.axhline(
-    0,
-    linewidth=0.5,
-    alpha=0.5
+    0, color="#C8C8C8", lw=0.7, zorder=1
 )
 
 ax2.axvline(
-    0,
-    linewidth=0.5,
-    alpha=0.5
+    0, color="#C8C8C8", lw=0.7, zorder=1
 )
 
 ax2.set_xlabel(
-    f"PC1 ({varianza[0]:.1f}% variance)"
+    f"PC1 ({variance[0]:.1f}% variance)",
+    labelpad=4
 )
 
 ax2.set_ylabel(
-    f"PC2 ({varianza[1]:.1f}% variance)"
+    f"PC2 ({variance[1]:.1f}% variance)",
+    labelpad=4
 )
 
-ax2.set_title(
-    "Global transcriptional structure",
-    fontsize=11
+ax2.tick_params(
+    direction="out",
+    length=3,
+    width=0.7
 )
 
-ax2.legend(
+ax2.spines["top"].set_visible(False)
+ax2.spines["right"].set_visible(False)
+
+# Ensure all markers remain inside axes.
+for key in ("PC1", "PC2"):
+    low = df[key].min()
+    high = df[key].max()
+    padding = max((high - low) * 0.13, 1.0)
+
+    if key == "PC1":
+        ax2.set_xlim(low - padding, high + padding)
+    else:
+        ax2.set_ylim(low - padding, high + padding)
+
+# ------------------------------------------------------------
+# 4. Legends within the figure canvas
+# ------------------------------------------------------------
+
+handles = [
+    Line2D(
+        [0], [0],
+        marker=styles[t][0],
+        linestyle="None",
+        markerfacecolor=styles[t][1],
+        markeredgecolor="black",
+        markeredgewidth=0.5,
+        markersize=6.5,
+        label=t
+    )
+    for t in styles
+]
+
+# Treatment legend: below the PCA axis.
+legend = ax2.legend(
+    handles=handles,
+    loc="upper center",
+    bbox_to_anchor=(0.5, -0.32),
+    ncol=3,
     frameon=False,
-    fontsize=9
+    fontsize=7.1,
+    handletextpad=0.35,
+    columnspacing=0.85,
+    borderaxespad=0
+)
+
+# Cell-line key: second row below treatment legend.
+ax2.text(
+    0.5, -0.56,
+    "Cell lines:  1 A549   ·   2 HA1E   ·   "
+    "3 PC3   ·   4 VCAP",
+    transform=ax2.transAxes,
+    ha="center",
+    va="top",
+    fontsize=7.2,
+    clip_on=False
 )
 
 # ------------------------------------------------------------
-# 7. Guardar
+# 5. Export
 # ------------------------------------------------------------
 
+OUTPUT.mkdir(parents=True, exist_ok=True)
+
+pdf_path = OUTPUT / "Figure_1_study_design_PCA.pdf"
+png_path = OUTPUT / "Figure_1_study_design_PCA.png"
+csv_path = OUTPUT / "Figure_1_PCA_coordinates.csv"
+
 fig.savefig(
-    "Figure_1_study_design_PCA.pdf",
-    bbox_inches="tight"
+    pdf_path,
+    format="pdf",
+    bbox_inches=None,
+    facecolor="white"
 )
 
 fig.savefig(
-    "Figure_1_study_design_PCA.png",
+    png_path,
+    format="png",
     dpi=600,
-    bbox_inches="tight"
+    bbox_inches=None,
+    facecolor="white"
 )
 
-pca_df.to_csv(
-    "Figure_1_PCA_coordinates.csv",
-    index=False
-)
+df.to_csv(csv_path, index=False)
 
 plt.close(fig)
 
-print("\n" + "=" * 80)
-print("ARCHIVOS GENERADOS")
-print("=" * 80)
-
-print("- Figure_1_study_design_PCA.pdf")
-print("- Figure_1_study_design_PCA.png")
-print("- Figure_1_PCA_coordinates.csv")
-
-print("\nFIGURA 1 COMPLETADA")
+print("=" * 65)
+print("FIGURE 1 GENERATED")
+print("Dimensions: 14.5 x 9 cm")
+print("PDF:", pdf_path)
+print("PNG:", png_path)
+print("CSV:", csv_path)
+print("=" * 65)
