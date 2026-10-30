@@ -41,3 +41,16 @@ This file corresponds to the MSigDB human Hallmark gene-set collection release 2
 The files in `data/curation/` are original curation and signature-selection files from the working analysis. Their SHA256 hashes were verified against the corresponding original analysis files during repository preparation, confirming that the repository copies are unchanged.
 
 The GSE92742 metadata files and the Hallmark GMT file included in `data/` were likewise checked against the files used in the original analysis before inclusion in the repository.
+
+## Figure 6 reproducibility
+
+Figure 6 can be regenerated using `scripts/80_figura6_reproducible.py` and the following four CSV files included in the repository root:
+
+- `E2_temporal_similitud_global.csv`
+- `E2_temporal_similitud_landmark.csv`
+- `E2_temporal_5Hallmarks_por_bloque.csv`
+- `E2_temporal_5Hallmarks_landmark_por_bloque.csv`
+
+The script uses repository-relative paths and generates `Figure_6_temporal_sensitivity.pdf`, `Figure_6_temporal_sensitivity.png`, and `Figure_6_temporal_values.csv` in `results/figures/`.
+
+The script was successfully executed using these inputs during repository preparation.
