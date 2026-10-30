@@ -41,7 +41,7 @@ The manuscript includes six figures. Figure 6 is regenerated using `scripts/80_f
 
 ## Citation
 
-A Zenodo DOI will be added once a release has been archived.
+The repository is archived in Zenodo: [10.5281/zenodo.23816020](https://doi.org/10.5281/zenodo.23816020). The first GitHub release is `v1.0.0`.
 
 ## License
 
