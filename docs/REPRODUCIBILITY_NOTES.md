@@ -42,6 +42,13 @@ The files in `data/curation/` are original curation and signature-selection file
 
 The GSE92742 metadata files and the Hallmark GMT file included in `data/` were likewise checked against the files used in the original analysis before inclusion in the repository.
 
+
+## Primary candidate metadata and intermediate files
+
+The original `candidato_dataset_primario_10uM.csv` has been added to the repository root (commit `0b120fe`). It is read by `scripts/12_auditar_replicacion.py` and `scripts/13_construir_diseno_pareado.py`. Script 13 writes `candidato_primario_tripletes_10uM.csv`, which is subsequently read by `scripts/14_extraer_dataset_primario.py` to select the matched primary signatures. Script 14 also requires the Level 5 expression matrix and its metadata and gene information, generated upstream by script 09.
+
+Intermediate CSV and NPZ outputs should not be described as independently available in this repository unless they have been committed. Their generation scripts document their provenance, but full end-to-end execution has not been revalidated as part of this documentation update. No analytical values have been recalculated or altered.
+
 ## Figure 6 reproducibility
 
 Figure 6 can be regenerated using `scripts/80_figura6_reproducible.py` and the following four CSV files included in the repository root:
