@@ -4,7 +4,7 @@ This document describes the organisation and execution of the analysis pipeline 
 
 **Convergent and context-dependent transcriptional programmes of vitamin D and estrogen signalling: a comparative LINCS L1000 analysis**
 
-The analysis is implemented as 79 numbered Python scripts in the `scripts/` directory. Together, these scripts cover data exploration and curation, extraction of LINCS L1000 Level 5 expression data, construction and validation of the matched primary dataset, statistical and gene-level analyses, Hallmark gene-set analyses, context-dependent and temporal analyses, and generation of manuscript figures, tables and supplementary material.
+The original analytical workflow is documented in 79 numbered Python scripts in the `scripts/` directory. An additional script, `80_figura6_reproducible.py`, regenerates Figure 6 from preserved temporal-analysis outputs. Together, these scripts cover data exploration and curation, extraction of LINCS L1000 Level 5 expression data, construction and validation of the matched primary dataset, statistical and gene-level analyses, Hallmark gene-set analyses, context-dependent and temporal analyses, and generation of manuscript figures, tables and supplementary material.
 
 ## Working directory
 
@@ -14,7 +14,7 @@ Several scripts generate intermediate files that are subsequently read by later 
 
 ## Pipeline organisation
 
-The 79 scripts are organised into the following analytical stages:
+The original 79 scripts are organised into the following analytical stages; script 80 is an additional Figure 6 regeneration step:
 
 1. **Scripts 01–08 — Data exploration, signature selection and pre-analysis curation**
 2. **Scripts 09–15 — Level 5 extraction, quality control and construction of the matched primary dataset**
@@ -25,6 +25,7 @@ The 79 scripts are organised into the following analytical stages:
 7. **Scripts 53–58 — Main manuscript figures and tables**
 8. **Scripts 59–68 — Supplementary Tables S1–S9 and their audit**
 9. **Scripts 69–79 — Publication formatting and compilation of the supplementary material**
+10. **Script 80 — Regeneration of Figure 6 from preserved temporal results**
 
 Some numbered scripts perform inspection, validation or reporting steps rather than generating a new analytical result. They are retained because they document the actual workflow used during the analysis.
 
@@ -108,7 +109,7 @@ These scripts construct and analyse the temporal estradiol dataset, including ex
 
 ### Stage 7 — Main manuscript outputs (scripts 53–58)
 
-These scripts generate the five main manuscript figures and the principal manuscript tables from the analytical outputs produced in the preceding stages.
+These scripts generate Figures 1–5 and the principal manuscript tables from the analytical outputs produced in the preceding stages.
 
 ### Stage 8 — Supplementary tables and audit (scripts 59–68)
 
@@ -117,3 +118,7 @@ These scripts generate Supplementary Tables S1–S9 and perform consistency and 
 ### Stage 9 — Publication preparation (scripts 69–79)
 
 These scripts prepare publication-formatted supplementary files, generate Word versions where required and compile the final supplementary material.
+
+### Stage 10 — Figure 6 reproducibility (script 80)
+
+`scripts/80_figura6_reproducible.py` regenerates Figure 6 using four preserved temporal CSV files in the repository root. Its inputs and outputs are specified in `docs/REPRODUCIBILITY_NOTES.md`. This step does not rerun the upstream temporal analysis.
