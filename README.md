@@ -45,4 +45,8 @@ A Zenodo DOI will be added once a release has been archived.
 
 ## License
 
-No software licence has yet been selected. Until a licence is added, the presence of code in this repository does not by itself grant reuse permissions.
+Original software code is licensed under the [MIT License](LICENSE).
+
+Original research figures, tables and documentation authored by the copyright holders are licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](LICENSE-CONTENT.md), unless otherwise indicated.
+
+Third-party materials, including LINCS L1000 source data and externally sourced gene-set collections, are excluded from these grants and remain subject to their own applicable terms.
